@@ -1,0 +1,26 @@
+paralellize?
+
+given some number of doc refs...
+given some operation: add, set, update, delete
+
+migration:
+0. on input validation... if add, generate docref... dedup
+1. read all db docs to load before
+2. calculate after (add/set are after... delete after is {}... update after...)
+3. generate prettydiff and json patch instructions for rollback...
+4. on confirm, execute all changes and store rollbacks {ref -> jsonpatch}
+
+rollback:
+0. load rollback file
+1. read all db docs to load before (if does not exists, create docref)
+2. apply json patches to get after
+3. calculate commands... {}->{...}/{...}->{...} are set... {...}->{} is delete
+4. generate prettydiff 
+5. on confirm, execute all changes and mark rollbacks {ref -> jsonpatch} as rolledback
+
+
+FUNCTIONALITY:
+  generate pretty diff
+  generate/apply patch instructions
+  calculate update after
+delete fields "<delete>"
