@@ -11,7 +11,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-// TODO implement this
 type Firestore interface {
 	GetDocData(docPath string) (map[string]any, error)
 	GenDocPath(colPath string) (string, error)
@@ -86,6 +85,9 @@ func (f Firefriend) doc(path string) (*firestore.DocumentSnapshot, error) {
 func (f Firefriend) GetDocData(docPath string) (map[string]any, error) {
 
 	snap, err := f.doc(docPath)
+	if !snap.Exists() {
+		return map[string]any{}, nil
+	}
 
 	if err != nil {
 		return map[string]interface{}{}, err

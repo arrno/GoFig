@@ -104,7 +104,12 @@ func (m *Migrator) RunMigration() {
 }
 
 // TODO
-func (m *Migrator) LoadRollback() {}
+func (m *Migrator) LoadRollback() error {
+	// load from path and unmarshal into Rollback struct
+	// hydrate changes from Rollback
+	// solve changes
+	return nil
+}
 
 type Stager struct {
 	migrator *Migrator
@@ -142,7 +147,7 @@ func (s Stager) Delete(docPath string) error {
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, map[string]any{}, MigratorSet)
+	change := NewChange(docPath, before, map[string]any{}, MigratorDelete)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
