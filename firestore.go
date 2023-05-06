@@ -18,6 +18,7 @@ type Firestore interface {
 	UpdateDoc(docPath string, data map[string]any) error
 	SetDoc(docPath string, data map[string]any) error
 	DeleteDoc(docPath string) error
+	Name() string
 }
 
 type Firefriend struct {
@@ -51,6 +52,10 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 	}
 	return &f, func() { client.Close() }, err
 
+}
+
+func (f Firefriend) Name() string {
+	return f.client.Doc("__init__").Path
 }
 
 func (f Firefriend) docRef(path string) (*firestore.DocumentRef, error) {

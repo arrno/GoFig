@@ -13,6 +13,7 @@ func NewController(config map[string]string) *controller {
 	return &c
 }
 
+// TODO
 func (c controller) manageMigration() {
-	//
+	// inject firestore and boot migrator
 }

@@ -1,11 +1,29 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"time"
+)
+
+type RollbackUnit struct {
+	DocPath string `json:"docPath"`
+	Instruction string `json:"instruction"`
+}
+
+type Rollback struct {
+	DatabaseName string `json:"databaseName"`
+	Timestamp time.Time `json:"timestamp"`
+	ChangeUnits []RollbackUnit `json:"changeUnits"`
+	Executed bool
+}
 
 // <---------------------- Migrator ------------------------------------>
 
 type Migrator struct {
-	keyPath     string
+	name string
 	storagePath string
 	deleteFlag  string
 	database    Firestore
@@ -13,9 +31,9 @@ type Migrator struct {
 	isRollback  bool
 }
 
-func NewMigrator(keyPath string, storagePath string, database Firestore) *Migrator {
+func NewMigrator(storagePath string, database Firestore, name string) *Migrator {
 	m := Migrator{
-		keyPath:     keyPath,
+		name: name,
 		storagePath: storagePath,
 		deleteFlag:  "<delete>",
 		database:    database,
@@ -23,15 +41,45 @@ func NewMigrator(keyPath string, storagePath string, database Firestore) *Migrat
 	return &m
 }
 
+func (m *Migrator) buildRollback() (*Rollback, error) {
+	rollback := Rollback{
+		DatabaseName: m.database.Name(),
+		Timestamp: time.Now(),
+		Executed: false,
+	}
+	for _, c := range m.changes {
+		if c.errState != nil {
+			return nil, errors.New("Detected error state on changes.")
+		}
+		u := RollbackUnit{
+			DocPath: c.docPath,
+			Instruction: c.rollback,
+		}
+		rollback.ChangeUnits = append(rollback.ChangeUnits, u)
+	}
+	return &rollback, nil
+}
+
+func (m *Migrator) storeRollback() error {
+	rollback, err := m.buildRollback()
+	if err != nil {
+		return err
+	}
+    js, err := json.Marshal(rollback)
+	if err != nil {
+		return err
+	}
+    err = ioutil.WriteFile(m.storagePath + "/" + m.name + ".json", js, 0644)
+	return err
+}
+
 // TODO
-func (m *Migrator) storeRollback()   {}
 func (m *Migrator) validateWorkset() {}
 
 func (m *Migrator) SetDeleteFlag(flag string) {
 	m.deleteFlag = flag
 }
 
-// TODO
 func (m *Migrator) CrunchMigration() {
 	for _, c := range m.changes {
 		c.SolveChange()
@@ -54,6 +102,8 @@ func (m *Migrator) RunMigration() {
 		}
 	}
 }
+
+// TODO
 func (m *Migrator) LoadRollback() {}
 
 type Stager struct {
