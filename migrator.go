@@ -3,6 +3,7 @@ package main
 import "fmt"
 
 // <---------------------- Migrator ------------------------------------>
+
 type Migrator struct {
 	keyPath     string
 	storagePath string
@@ -17,7 +18,7 @@ func NewMigrator(keyPath string, storagePath string, database Firestore) *Migrat
 		keyPath:     keyPath,
 		storagePath: storagePath,
 		deleteFlag:  "<delete>",
-		database: database,
+		database:    database,
 	}
 	return &m
 }
@@ -29,6 +30,7 @@ func (m *Migrator) validateWorkset() {}
 func (m *Migrator) SetDeleteFlag(flag string) {
 	m.deleteFlag = flag
 }
+
 // TODO
 func (m *Migrator) CrunchMigration() {
 	for _, c := range m.changes {
@@ -48,7 +50,7 @@ func (m *Migrator) RunMigration() {
 		if err != nil {
 			fmt.Println(c.docPath)
 			fmt.Println("\n< ERROR EXEC... error on change execution. >")
-			fmt.Println(err.Error()+"\n")
+			fmt.Println(err.Error() + "\n")
 		}
 	}
 }
@@ -101,4 +103,3 @@ func (m *Migrator) Stage() *Stager {
 	}
 	return &s
 }
-

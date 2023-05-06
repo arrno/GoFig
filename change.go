@@ -7,6 +7,7 @@ import (
 )
 
 // <---------------------- Change ------------------------------------>
+
 type Command int
 
 const (
@@ -29,10 +30,10 @@ type Change struct {
 
 func NewChange(docPath string, before map[string]any, patch map[string]any, command Command) *Change {
 	c := Change{
-		docPath: docPath,
-		before:  before,
-		patch:   patch,
-		command: command,
+		docPath:  docPath,
+		before:   before,
+		patch:    patch,
+		command:  command,
 		errState: errors.New("Change has not yet been solved."),
 	}
 	return &c

@@ -40,8 +40,8 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 	client, err := app.Firestore(ctx)
 
 	config := map[string]string{
-		"idChars" : "",
-		"idSize": "30",
+		"idChars": "",
+		"idSize":  "30",
 	}
 
 	f := Firefriend{
@@ -54,10 +54,9 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 }
 
 func (f Firefriend) docRef(path string) (*firestore.DocumentRef, error) {
-	
 
 	ref := f.client.Doc(path)
-	
+
 	if ref == nil {
 		return ref, errors.New("Unable to create doc reference.")
 	}
@@ -67,31 +66,31 @@ func (f Firefriend) docRef(path string) (*firestore.DocumentRef, error) {
 }
 
 func (f Firefriend) doc(path string) (*firestore.DocumentSnapshot, error) {
-	
+
 	ref, err := f.docRef(path)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	snap, err := ref.Get(f.ctx)
-	
+
 	return snap, err
 }
 
 func (f Firefriend) GetDocData(docPath string) (map[string]any, error) {
 
 	snap, err := f.doc(docPath)
-	
+
 	if err != nil {
 		return map[string]interface{}{}, err
-	
+
 	}
 	return snap.Data(), nil
 }
 
 func (f Firefriend) GenDocPath(colPath string) (string, error) {
-	
+
 	colRef := f.client.Collection(colPath)
 	if colRef == nil {
 		return "", errors.New("Invalid collection path. Must have even number of path tokens.")
