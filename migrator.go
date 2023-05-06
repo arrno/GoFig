@@ -9,21 +9,21 @@ import (
 )
 
 type RollbackUnit struct {
-	DocPath string `json:"docPath"`
+	DocPath     string `json:"docPath"`
 	Instruction string `json:"instruction"`
 }
 
 type Rollback struct {
-	DatabaseName string `json:"databaseName"`
-	Timestamp time.Time `json:"timestamp"`
-	ChangeUnits []RollbackUnit `json:"changeUnits"`
-	Executed bool
+	DatabaseName string         `json:"databaseName"`
+	Timestamp    time.Time      `json:"timestamp"`
+	ChangeUnits  []RollbackUnit `json:"changeUnits"`
+	Executed     bool
 }
 
 // <---------------------- Migrator ------------------------------------>
 
 type Migrator struct {
-	name string
+	name        string
 	storagePath string
 	deleteFlag  string
 	database    Firestore
@@ -33,7 +33,7 @@ type Migrator struct {
 
 func NewMigrator(storagePath string, database Firestore, name string) *Migrator {
 	m := Migrator{
-		name: name,
+		name:        name,
 		storagePath: storagePath,
 		deleteFlag:  "<delete>",
 		database:    database,
@@ -44,15 +44,15 @@ func NewMigrator(storagePath string, database Firestore, name string) *Migrator 
 func (m *Migrator) buildRollback() (*Rollback, error) {
 	rollback := Rollback{
 		DatabaseName: m.database.Name(),
-		Timestamp: time.Now(),
-		Executed: false,
+		Timestamp:    time.Now(),
+		Executed:     false,
 	}
 	for _, c := range m.changes {
 		if c.errState != nil {
 			return nil, errors.New("Detected error state on changes.")
 		}
 		u := RollbackUnit{
-			DocPath: c.docPath,
+			DocPath:     c.docPath,
 			Instruction: c.rollback,
 		}
 		rollback.ChangeUnits = append(rollback.ChangeUnits, u)
@@ -65,11 +65,11 @@ func (m *Migrator) storeRollback() error {
 	if err != nil {
 		return err
 	}
-    js, err := json.Marshal(rollback)
+	js, err := json.Marshal(rollback)
 	if err != nil {
 		return err
 	}
-    err = ioutil.WriteFile(m.storagePath + "/" + m.name + ".json", js, 0644)
+	err = ioutil.WriteFile(m.storagePath+"/"+m.name+".json", js, 0644)
 	return err
 }
 
