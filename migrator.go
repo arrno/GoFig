@@ -1,21 +1,23 @@
 package main
 
+import "fmt"
+
 // <---------------------- Migrator ------------------------------------>
 type Migrator struct {
 	keyPath     string
 	storagePath string
-	deleteFlag  string // TODO
+	deleteFlag  string
 	database    Firestore
 	changes     []*Change
 	isRollback  bool
 }
 
-func NewMigrator(keyPath string, storagePath string) *Migrator {
+func NewMigrator(keyPath string, storagePath string, database Firestore) *Migrator {
 	m := Migrator{
 		keyPath:     keyPath,
 		storagePath: storagePath,
 		deleteFlag:  "<delete>",
-		// TODO database 
+		database: database,
 	}
 	return &m
 }
@@ -28,7 +30,28 @@ func (m *Migrator) SetDeleteFlag(flag string) {
 	m.deleteFlag = flag
 }
 // TODO
-func (m *Migrator) RunMigration() {}
+func (m *Migrator) CrunchMigration() {
+	for _, c := range m.changes {
+		c.SolveChange()
+	}
+}
+func (m *Migrator) PresentMigration() {
+	for _, c := range m.changes {
+		c.Present()
+		fmt.Println("\n<--------------------------------------------------->")
+		fmt.Println("<--------------------------------------------------->\n")
+	}
+}
+func (m *Migrator) RunMigration() {
+	for _, c := range m.changes {
+		err := c.pushChange(m.database)
+		if err != nil {
+			fmt.Println(c.docPath)
+			fmt.Println("\n< ERROR EXEC... error on change execution. >")
+			fmt.Println(err.Error()+"\n")
+		}
+	}
+}
 func (m *Migrator) LoadRollback() {}
 
 type Stager struct {
@@ -36,7 +59,7 @@ type Stager struct {
 }
 
 func (s Stager) Update(docPath string, data map[string]any) error {
-	before, err := s.migrator.database.getDocData(docPath)
+	before, err := s.migrator.database.GetDocData(docPath)
 	if err != nil {
 		return err
 	}
@@ -45,7 +68,7 @@ func (s Stager) Update(docPath string, data map[string]any) error {
 	return nil
 }
 func (s Stager) Set(docPath string, data map[string]any) error {
-	before, err := s.migrator.database.getDocData(docPath)
+	before, err := s.migrator.database.GetDocData(docPath)
 	if err != nil {
 		return err
 	}
@@ -53,8 +76,8 @@ func (s Stager) Set(docPath string, data map[string]any) error {
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
-func (s Stager) Add(data map[string]any) error {
-	path, err := s.migrator.database.genDocPath()
+func (s Stager) Add(colPath string, data map[string]any) error {
+	path, err := s.migrator.database.GenDocPath(colPath)
 	if err != nil {
 		return err
 	}
@@ -63,7 +86,7 @@ func (s Stager) Add(data map[string]any) error {
 	return nil
 }
 func (s Stager) Delete(docPath string) error {
-	before, err := s.migrator.database.getDocData(docPath)
+	before, err := s.migrator.database.GetDocData(docPath)
 	if err != nil {
 		return err
 	}

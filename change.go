@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 // <---------------------- Change ------------------------------------>
@@ -23,6 +24,7 @@ type Change struct {
 	command    Command
 	prettyDiff string
 	rollback   string
+	errState   error
 }
 
 func NewChange(docPath string, before map[string]any, patch map[string]any, command Command) *Change {
@@ -31,14 +33,34 @@ func NewChange(docPath string, before map[string]any, patch map[string]any, comm
 		before:  before,
 		patch:   patch,
 		command: command,
+		errState: errors.New("Change has not yet been solved."),
 	}
 	return &c
 }
 
-func (c *Change) solveChange() {
-	c.inferAfter()
-	c.inferPrettyDiff()
-	c.inferRollback()
+func (c *Change) SolveChange() error {
+	c.errState = nil
+	err := c.inferAfter()
+	if err != nil {
+		c.errState = err
+		return err
+	}
+	err = c.inferPrettyDiff()
+	if err != nil {
+		c.errState = err
+		return err
+	}
+	err = c.inferRollback()
+	if err != nil {
+		c.errState = err
+		return err
+	}
+	return nil
+}
+
+// TODO solve for rollback
+func (c *Change) SolveRollback() error {
+	return nil
 }
 
 func (c *Change) commandString() string {
@@ -141,15 +163,25 @@ func (c *Change) inferPrettyDiff() error {
 	return nil
 }
 
+func (c *Change) Present() {
+	fmt.Println(c.docPath)
+	if c.errState != nil {
+		fmt.Println("< ERROR STATE... cannot execute changes. >")
+		fmt.Println(c.errState.Error())
+		return
+	}
+	fmt.Println(c.prettyDiff)
+}
+
 func (c *Change) pushChange(database Firestore) error {
 	switch c.command {
 	case 1:
-		return database.updateDoc(c.docPath, c.patch)
+		return database.UpdateDoc(c.docPath, c.patch)
 	case 2:
-		return database.setDoc(c.docPath, c.patch)
+		return database.SetDoc(c.docPath, c.patch)
 	case 3:
-		return database.setDoc(c.docPath, c.patch)
+		return database.SetDoc(c.docPath, c.patch)
 	default:
-		return database.deleteDoc(c.docPath)
+		return database.DeleteDoc(c.docPath)
 	}
 }
