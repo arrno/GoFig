@@ -11,30 +11,33 @@ import (
 type Command int
 
 const (
-	MigratorUpdate Command = iota
+	MigratorUnknown Command = iota
+	MigratorUpdate
 	MigratorSet
 	MigratorAdd
 	MigratorDelete
 )
 
 type Change struct {
-	docPath    string
-	before     map[string]any
-	patch      map[string]any
-	after      map[string]any
-	command    Command
-	prettyDiff string
-	rollback   string
-	errState   error
+	docPath     string
+	before      map[string]any
+	patch       map[string]any
+	after       map[string]any
+	instruction string
+	command     Command
+	prettyDiff  string
+	rollback    string
+	errState    error
 }
 
-func NewChange(docPath string, before map[string]any, patch map[string]any, command Command) *Change {
+func NewChange(docPath string, before map[string]any, patch map[string]any, command Command, instruction string) *Change {
 	c := Change{
-		docPath:  docPath,
-		before:   before,
-		patch:    patch,
-		command:  command,
-		errState: errors.New("Change has not yet been solved."),
+		docPath:     docPath,
+		before:      before,
+		patch:       patch,
+		command:     command,
+		instruction: instruction,
+		errState:    errors.New("Change has not yet been solved."),
 	}
 	return &c
 }
@@ -42,6 +45,12 @@ func NewChange(docPath string, before map[string]any, patch map[string]any, comm
 func (c *Change) SolveChange() error {
 	c.errState = nil
 	err := c.inferAfter()
+	if err != nil {
+		c.errState = err
+		return err
+	}
+	// if this is a rollback...
+	err = c.inferCommand()
 	if err != nil {
 		c.errState = err
 		return err
@@ -59,46 +68,48 @@ func (c *Change) SolveChange() error {
 	return nil
 }
 
-// TODO solve for rollback
-func (c *Change) SolveRollback() error {
-	return nil
-}
-
 func (c *Change) commandString() string {
 	switch c.command {
-	case 1:
+	case MigratorUpdate:
 		return "update"
-	case 2:
+	case MigratorSet:
 		return "set"
-	case 3:
+	case MigratorAdd:
 		return "add"
-	default:
+	case MigratorDelete:
 		return "delete"
+	default:
+		return "unknown"
 	}
 }
 
 func (c *Change) inferAfter() error {
-	if c.command != 0 {
+	if c.command != MigratorUnknown {
 		switch c.command {
-		case 2:
+		case MigratorSet:
 			c.after = c.patch
 			return nil
-		case 3:
+		case MigratorAdd:
 			c.after = c.patch
 			return nil
-		case 4:
+		case MigratorDelete:
 			c.after = map[string]any{}
 			return nil
 		}
 	}
-	if c.before == nil || c.after == nil {
-		return errors.New("Need before and patch to infer after.")
+	if c.before == nil || (c.patch == nil && c.instruction == "") {
+		return errors.New("Need before and patch/instruction to infer after.")
 	}
 	bm, err := json.Marshal(c.before)
 	if err != nil {
 		return err
 	}
-	pm, err := json.Marshal(c.patch)
+	var pm []byte
+	if c.patch != nil {
+		pm, err = json.Marshal(c.patch)
+	} else {
+		pm = []byte(c.instruction)
+	}
 	if err != nil {
 		return err
 	}
@@ -114,6 +125,9 @@ func (c *Change) inferAfter() error {
 
 func (c *Change) inferCommand() error {
 	// this is only really needed for rollbacks
+	if c.command != MigratorUnknown {
+		return nil
+	}
 
 	if c.after == nil {
 		return errors.New("Need after value to infer command.")
@@ -176,11 +190,11 @@ func (c *Change) Present() {
 
 func (c *Change) pushChange(database Firestore) error {
 	switch c.command {
-	case 1:
+	case MigratorUpdate:
 		return database.UpdateDoc(c.docPath, c.patch)
-	case 2:
+	case MigratorSet:
 		return database.SetDoc(c.docPath, c.patch)
-	case 3:
+	case MigratorAdd:
 		return database.SetDoc(c.docPath, c.patch)
 	default:
 		return database.DeleteDoc(c.docPath)
