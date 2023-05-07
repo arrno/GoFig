@@ -47,7 +47,7 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 	alphabet += strings.ToUpper(alphabet) + "0123456789_-"
 	config := map[string]string{
 		"idChars": alphabet,
-		"idSize":  "30",
+		"idSize":  "20",
 	}
 
 	f := Firefriend{

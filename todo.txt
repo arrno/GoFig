@@ -3,4 +3,5 @@ test/verify
 delete fields
 color code pretty diffs
 save logs to disc
+storagePath as remote collection...
 javascript SDK ->

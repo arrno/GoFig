@@ -22,7 +22,7 @@ type Migration struct {
 	DatabaseName string     `json:"databaseName"`
 	Timestamp    time.Time  `json:"timestamp"`
 	ChangeUnits  []WorkUnit `json:"changeUnits"`
-	Executed     bool
+	Executed     bool       `json:"executed"`
 }
 
 // <---------------------- Migrator ------------------------------------>
@@ -72,7 +72,11 @@ func (m *Migrator) buildRollback() (*Migration, error) {
 			command = MigratorAdd
 			break
 		case MigratorSet:
-			command = MigratorUnknown
+			if len(c.before) == 0 {
+				command = MigratorDelete
+			} else {
+				command = MigratorUpdate
+			}
 			break
 		default:
 			command = MigratorUnknown
@@ -194,6 +198,7 @@ func (m *Migrator) RunMigration() {
 	}
 	m.hasRun = true
 	m.StoreMigration()
+	m.storeRollback()
 }
 
 // LoadMigration will look for an existing migration file matching this Migrator's name.
@@ -205,6 +210,7 @@ func (m *Migrator) LoadMigration() error {
 	if err != nil {
 		return err
 	}
+	m.hasRun = mig.Executed
 	m.changes = []*Change{}
 	for _, unit := range mig.ChangeUnits {
 		switch unit.Command {
@@ -227,7 +233,6 @@ func (m *Migrator) LoadMigration() error {
 			return err
 		}
 	}
-	m.PrepMigration()
 	return nil
 }
 
