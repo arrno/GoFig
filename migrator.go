@@ -144,16 +144,30 @@ func (m *Migrator) toggleDeleteFlag(data map[string]any, mode TransformMode) map
 	return Transform(data, before, after).(map[string]any)
 }
 
-// CrunchMigration is run after all changes are staged. This function validates and solves all of the changes.
+// PrepMigration is run after all changes are staged. This function validates and solves all of the changes.
 // No changes are pushed to the database.
-func (m *Migrator) CrunchMigration() {
+func (m *Migrator) PrepMigration() error {
+	err := m.validateWorkset()
+	if err != nil {
+		return err
+	}
 	for _, c := range m.changes {
 		c.SolveChange()
 	}
+	return nil
 }
 
 // PresentMigration prints all the staged changes to stdout for review.
 func (m *Migrator) PresentMigration() {
+	fmt.Printf(
+		"\nMigration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
+		m.name,
+		m.database.Name(),
+		m.storagePath,
+		m.hasRun,
+	)
+	fmt.Println("\n<--------------------------------------------------->")
+	fmt.Println("<--------------------------------------------------->\n")
 	for _, c := range m.changes {
 		c.Present()
 		fmt.Println("\n<--------------------------------------------------->")
@@ -162,11 +176,7 @@ func (m *Migrator) PresentMigration() {
 }
 
 // RunMigration executes all of the staged changes against the database.
-func (m *Migrator) RunMigration() error {
-	err := m.validateWorkset()
-	if err != nil {
-		return err
-	}
+func (m *Migrator) RunMigration() {
 	for _, c := range m.changes {
 		err := c.pushChange(
 			m.database,
@@ -184,7 +194,6 @@ func (m *Migrator) RunMigration() error {
 	}
 	m.hasRun = true
 	m.StoreMigration()
-	return nil
 }
 
 // LoadMigration will look for an existing migration file matching this Migrator's name.
@@ -218,7 +227,7 @@ func (m *Migrator) LoadMigration() error {
 			return err
 		}
 	}
-	m.CrunchMigration()
+	m.PrepMigration()
 	return nil
 }
 

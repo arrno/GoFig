@@ -98,4 +98,3 @@ func Transform(data any, before any, after any) any {
 	}
 	return data
 }
-

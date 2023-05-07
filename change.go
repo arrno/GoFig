@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // <---------------------- Change ------------------------------------>
@@ -191,7 +192,7 @@ func (c *Change) inferPrettyDiff() error {
 
 // Present prints the Change's state to stdout.
 func (c *Change) Present() {
-	fmt.Println(c.docPath)
+	fmt.Println(c.docPath + fmt.Sprintf("	[%s]", strings.ToUpper(c.commandString())) + "\n")
 	if c.errState != nil {
 		fmt.Println("< ERROR STATE... cannot execute changes. >")
 		fmt.Println(c.errState.Error())

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -18,7 +19,7 @@ type Firestore interface {
 	UpdateDoc(docPath string, data map[string]any) error
 	SetDoc(docPath string, data map[string]any) error
 	DeleteDoc(docPath string) error
-	DeleteField() string
+	DeleteField() any
 	Name() string
 }
 
@@ -42,9 +43,10 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 	}
 
 	client, err := app.Firestore(ctx)
-
+	alphabet := "abcdefghijklmnopqrstuvwxyz"
+	alphabet += strings.ToUpper(alphabet) + "0123456789_-"
 	config := map[string]string{
-		"idChars": "",
+		"idChars": alphabet,
 		"idSize":  "30",
 	}
 
@@ -60,7 +62,7 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 // Name returns a hash for the underlying firestore database name. This may
 // be useful for guarding against pushing changes to the wrong database.
 func (f Firefriend) Name() string {
-	return f.client.Doc("__init__").Path
+	return strings.Split(f.client.Doc("__init__/__init__").Path, "__init__/__init__")[0]
 }
 
 // docRef converts a string path to a firestore document reference.
@@ -113,11 +115,11 @@ func (f Firefriend) GenDocPath(colPath string) (string, error) {
 		return "", errors.New("Invalid collection path. Must have even number of path tokens.")
 	}
 
-	i, err := strconv.Atoi(f.config["Idsize"])
+	i, err := strconv.Atoi(f.config["idSize"])
 	if err != nil {
 		return "", err
 	}
-	id, err := nanoid.Generate(f.config["Idchars"], i)
+	id, err := nanoid.Generate(f.config["idChars"], i)
 
 	if err != nil {
 		return "", err
