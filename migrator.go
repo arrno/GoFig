@@ -131,9 +131,10 @@ const (
 // toggleDeleteFlag either serializes or deserializes the deleteFlag values on all staged Change structs.
 // The original is not changed rather, a copy is returned.
 func (m *Migrator) toggleDeleteFlag(data map[string]any, mode TransformMode) map[string]any {
+	
 	var before any
 	var after any
-	// TODO
+
 	switch mode {
 	case Serialize:
 		before = m.database.DeleteField()
@@ -145,7 +146,9 @@ func (m *Migrator) toggleDeleteFlag(data map[string]any, mode TransformMode) map
 		before = m.deleteFlag
 		after = nil
 	}
+	
 	return Transform(data, before, after).(map[string]any)
+
 }
 
 // PrepMigration is run after all changes are staged. This function validates and solves all of the changes.
