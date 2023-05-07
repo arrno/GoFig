@@ -96,9 +96,18 @@ func (m *Migrator) storeRollback() error {
 	return StoreJson(rollback, m.storagePath, m.name+"_rollback")
 }
 
-// TODO
-func (m *Migrator) validateWorkset() {
-	// ensure we do not have multiple changes to the same document
+// validateWorkset returns a new error if the staged Changes are not valid
+func (m *Migrator) validateWorkset() error {
+	// No duplicate docpath refs
+	docPaths := map[string]bool{}
+	for _, change := range m.changes {
+		_, ok := docPaths[change.docPath]
+		if ok {
+			return errors.New("Cannot have multiple changes staged against the same document reference.")
+		}
+		docPaths[change.docPath] = true
+	}
+	return nil
 }
 
 // SetDeleteFlag updates the Migrator delete flag with a new string value. When this value
@@ -107,15 +116,17 @@ func (m *Migrator) SetDeleteFlag(flag string) {
 	m.deleteFlag = flag
 }
 
-type SerializeMode int
+type TransformMode int
 
 const (
-	Serialize SerializeMode = iota
+	Serialize TransformMode = iota
 	DeSerialize
+	Exclude
 )
 
 // toggleDeleteFlag either serializes or deserializes the deleteFlag values on all staged Change structs.
-func (m *Migrator) toggleDeleteFlag(data *map[string]any, mode SerializeMode) {
+// The original is not changed rather, a copy is returned.
+func (m *Migrator) toggleDeleteFlag(data map[string]any, mode TransformMode) map[string]any {
 	var before any
 	var after any
 	// TODO
@@ -126,8 +137,11 @@ func (m *Migrator) toggleDeleteFlag(data *map[string]any, mode SerializeMode) {
 	case DeSerialize:
 		before = m.deleteFlag
 		after = m.database.DeleteField()
+	case Exclude:
+		before = m.deleteFlag
+		after = nil
 	}
-	fmt.Println(before, after)
+	return Transform(data, before, after).(map[string]any)
 }
 
 // CrunchMigration is run after all changes are staged. This function validates and solves all of the changes.
@@ -148,9 +162,20 @@ func (m *Migrator) PresentMigration() {
 }
 
 // RunMigration executes all of the staged changes against the database.
-func (m *Migrator) RunMigration() {
+func (m *Migrator) RunMigration() error {
+	err := m.validateWorkset()
+	if err != nil {
+		return err
+	}
 	for _, c := range m.changes {
-		err := c.pushChange(m.database)
+		err := c.pushChange(
+			m.database,
+			func(data map[string]any) map[string]any {
+				return data
+				// TODO
+				// return m.toggleDeleteFlag(data, DeSerialize)
+			},
+		)
 		if err != nil {
 			fmt.Println(c.docPath)
 			fmt.Println("\n< ERROR EXEC... error on change execution. >")
@@ -159,6 +184,7 @@ func (m *Migrator) RunMigration() {
 	}
 	m.hasRun = true
 	m.StoreMigration()
+	return nil
 }
 
 // LoadMigration will look for an existing migration file matching this Migrator's name.

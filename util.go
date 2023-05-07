@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"reflect"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/nsf/jsondiff"
@@ -70,3 +71,31 @@ func LoadJson[T any](fullPath string, target *T) error {
 	}
 	return nil
 }
+
+// Transform returns new data where instances of before are replaced with after. If after is nil, key is dropped.
+// This function is recursive for slices and maps but not for nested structs.
+func Transform(data any, before any, after any) any {
+	switch k := reflect.ValueOf(data).Kind(); k {
+	case reflect.Map:
+		newData := map[any]any{}
+		for k, v := range data.(map[any]any) {
+			if reflect.DeepEqual(before, v) && reflect.DeepEqual(after, nil) {
+				continue
+			}
+			newData[k] = Transform(v, before, after)
+		}
+		return newData
+	case reflect.Slice:
+		newData := []any{}
+		for _, d := range data.([]any) {
+			newData = append(newData, Transform(d, before, after))
+		}
+		return newData
+	default:
+		if reflect.DeepEqual(data, before) {
+			return after
+		}
+	}
+	return data
+}
+
