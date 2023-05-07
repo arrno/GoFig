@@ -8,6 +8,7 @@ import (
 
 // <---------------------- Change ------------------------------------>
 
+// Command is an enum of supported Change command types for example 'Update'.
 type Command int
 
 const (
@@ -18,6 +19,8 @@ const (
 	MigratorDelete
 )
 
+// Change represents one change on one document. A change must contain enough data points to be solved.
+// For example, given a before and a patch, we can solve for the after value.
 type Change struct {
 	docPath     string
 	before      map[string]any
@@ -30,6 +33,7 @@ type Change struct {
 	errState    error
 }
 
+// NewChange is a Change factory.
 func NewChange(docPath string, before map[string]any, patch map[string]any, command Command, instruction string) *Change {
 	c := Change{
 		docPath:     docPath,
@@ -42,6 +46,7 @@ func NewChange(docPath string, before map[string]any, patch map[string]any, comm
 	return &c
 }
 
+// SolveChange will attempt to solve for all needed Change values given the current state.
 func (c *Change) SolveChange() error {
 	c.errState = nil
 	err := c.inferAfter()
@@ -68,6 +73,7 @@ func (c *Change) SolveChange() error {
 	return nil
 }
 
+// commandString converts a command enum to a string.
 func (c *Change) commandString() string {
 	switch c.command {
 	case MigratorUpdate:
@@ -83,6 +89,7 @@ func (c *Change) commandString() string {
 	}
 }
 
+// inferAfter attempts to solve for the Change's after value.
 func (c *Change) inferAfter() error {
 	if c.command != MigratorUnknown {
 		switch c.command {
@@ -113,7 +120,7 @@ func (c *Change) inferAfter() error {
 	if err != nil {
 		return err
 	}
-	after, err := applyDiffPatch(bm, pm)
+	after, err := ApplyDiffPatch(bm, pm)
 	if err != nil {
 		return err
 	}
@@ -123,6 +130,7 @@ func (c *Change) inferAfter() error {
 	return nil
 }
 
+// inferCommand attempts to solve for the Change's command value.
 func (c *Change) inferCommand() error {
 	// this is only really needed for rollbacks
 	if c.command != MigratorUnknown {
@@ -143,6 +151,8 @@ func (c *Change) inferCommand() error {
 	return nil
 }
 
+// inferRollback attempts to solve for the Change's rollback value.
+// The rollback value is in the form of json patch instructions.
 func (c *Change) inferRollback() error {
 	if c.before == nil || c.after == nil {
 		return errors.New("Need before and after value to infer rollback.")
@@ -155,7 +165,7 @@ func (c *Change) inferRollback() error {
 	if err != nil {
 		return err
 	}
-	r, err := getDiffPatch(a, b)
+	r, err := GetDiffPatch(a, b)
 	if err != nil {
 		return err
 	}
@@ -163,13 +173,14 @@ func (c *Change) inferRollback() error {
 	return nil
 }
 
+// inferPrettyDiff attempts to solve for the Change's prettyDiff value.
 func (c *Change) inferPrettyDiff() error {
 
 	if c.before == nil || c.after == nil {
 		return errors.New("Need before and after value to infer pretty diff.")
 	}
 
-	s, err := prettydiff(c.before, c.after)
+	s, err := PrettyDiff(c.before, c.after)
 	if err != nil {
 		return err
 	}
@@ -178,6 +189,7 @@ func (c *Change) inferPrettyDiff() error {
 	return nil
 }
 
+// Present prints the Change's state to stdout.
 func (c *Change) Present() {
 	fmt.Println(c.docPath)
 	if c.errState != nil {
@@ -188,6 +200,7 @@ func (c *Change) Present() {
 	fmt.Println(c.prettyDiff)
 }
 
+// pushChange executes this change unit against the database.
 func (c *Change) pushChange(database Firestore) error {
 	switch c.command {
 	case MigratorUpdate:

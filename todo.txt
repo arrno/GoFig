@@ -1,7 +1,6 @@
 # Todo
 test/verify
-validate workset
-handle delete flag
-logs
-add function descriptions
+validate workset (no dup docrefs)
+handle delete flag -> replace all instances of delete flag with db.DeleteField... rollback construct should adapt fine...
+save logs to disc
 color code pretty diffs

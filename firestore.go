@@ -11,21 +11,25 @@ import (
 	"google.golang.org/api/option"
 )
 
+// Firestore is an interface that expresses what a NoSQL database dependency should do.
 type Firestore interface {
 	GetDocData(docPath string) (map[string]any, error)
 	GenDocPath(colPath string) (string, error)
 	UpdateDoc(docPath string, data map[string]any) error
 	SetDoc(docPath string, data map[string]any) error
 	DeleteDoc(docPath string) error
+	DeleteField() string
 	Name() string
 }
 
+// Firefriend is our implementation/wrapper for google's firestore client.
 type Firefriend struct {
 	client *firestore.Client
 	ctx    context.Context
 	config map[string]string
 }
 
+// NewFirestore is a Firefriend factory
 func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 
 	ctx := context.Background()
@@ -53,10 +57,13 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 
 }
 
+// Name returns a hash for the underlying firestore database name. This may
+// be useful for guarding against pushing changes to the wrong database.
 func (f Firefriend) Name() string {
 	return f.client.Doc("__init__").Path
 }
 
+// docRef converts a string path to a firestore document reference.
 func (f Firefriend) docRef(path string) (*firestore.DocumentRef, error) {
 
 	ref := f.client.Doc(path)
@@ -69,6 +76,7 @@ func (f Firefriend) docRef(path string) (*firestore.DocumentRef, error) {
 
 }
 
+// doc converts a string path to a firestore document snapshot.
 func (f Firefriend) doc(path string) (*firestore.DocumentSnapshot, error) {
 
 	ref, err := f.docRef(path)
@@ -82,6 +90,7 @@ func (f Firefriend) doc(path string) (*firestore.DocumentSnapshot, error) {
 	return snap, err
 }
 
+// getDocData attempts to read the specified document. If the document exists, it returns the underlying data.
 func (f Firefriend) GetDocData(docPath string) (map[string]any, error) {
 
 	snap, err := f.doc(docPath)
@@ -96,6 +105,7 @@ func (f Firefriend) GetDocData(docPath string) (map[string]any, error) {
 	return snap.Data(), nil
 }
 
+// GenDocPath is used to generate new unique document path given a collection path.
 func (f Firefriend) GenDocPath(colPath string) (string, error) {
 
 	colRef := f.client.Collection(colPath)
@@ -115,6 +125,7 @@ func (f Firefriend) GenDocPath(colPath string) (string, error) {
 	return colPath + "/" + id, nil
 }
 
+// UpdateDoc pushes the data to the document at the given docPath. The changes are merged.
 func (f Firefriend) UpdateDoc(docPath string, data map[string]any) error {
 
 	ref, err := f.docRef(docPath)
@@ -126,6 +137,7 @@ func (f Firefriend) UpdateDoc(docPath string, data map[string]any) error {
 	return err
 }
 
+// SetDoc pushes the data to the document at the given docPath. The document is overwritten.
 func (f Firefriend) SetDoc(docPath string, data map[string]any) error {
 	ref, err := f.docRef(docPath)
 
@@ -136,6 +148,7 @@ func (f Firefriend) SetDoc(docPath string, data map[string]any) error {
 	return err
 }
 
+// DeleteDoc removed the given document from the database.
 func (f Firefriend) DeleteDoc(docPath string) error {
 	ref, err := f.docRef(docPath)
 
@@ -144,4 +157,11 @@ func (f Firefriend) DeleteDoc(docPath string) error {
 	}
 
 	return err
+}
+
+// DeleteField returns the firestore Delete value which can be set on a nested
+// data field within a Set/Update operation. The field will be removed when 
+// UpdateDoc or SetDoc is called.
+func (f Firefriend) DeleteField() any {
+	return firestore.Delete
 }

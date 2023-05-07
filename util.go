@@ -8,7 +8,8 @@ import (
 	"github.com/nsf/jsondiff"
 )
 
-func prettydiff(b map[string]any, a map[string]any) (string, error) {
+// PrettyDiff returns the pretty formatted difference between a before and after map.
+func PrettyDiff(b map[string]any, a map[string]any) (string, error) {
 
 	bm, err := json.Marshal(b)
 	if err != nil {
@@ -37,15 +38,18 @@ func prettydiff(b map[string]any, a map[string]any) (string, error) {
 
 }
 
-func getDiffPatch(original []byte, target []byte) ([]byte, error) {
+// GetDiffPatch produces the json patch instructions needed to transform the original to the target.
+func GetDiffPatch(original []byte, target []byte) ([]byte, error) {
 	return jsonpatch.CreateMergePatch(original, target)
 }
 
-func applyDiffPatch(original []byte, patch []byte) ([]byte, error) {
+// ApplyDiffPatch applies the json diff patch to the original and returns the result.
+func ApplyDiffPatch(original []byte, patch []byte) ([]byte, error) {
 	return jsonpatch.MergePatch(original, patch)
 }
 
-func storeJson(data any, storagePath string, fileName string) error {
+// StoreJson saves data as json to disc.
+func StoreJson(data any, storagePath string, fileName string) error {
 	js, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -54,7 +58,8 @@ func storeJson(data any, storagePath string, fileName string) error {
 	return err
 }
 
-func loadJson[T any](fullPath string, target *T) error {
+// LoadJson reads json from disc and hydrates the data into the provided target.
+func LoadJson[T any](fullPath string, target *T) error {
 	content, err := ioutil.ReadFile(fullPath + ".json")
 	if err != nil {
 		return err

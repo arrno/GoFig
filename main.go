@@ -6,50 +6,19 @@ import (
 )
 
 func main() {
-
-	// a := map[string]any{"a": 123, "b": 456, "c": []int{7, 10, 9}}
-	// b := map[string]any{"a": 125, "c": []int{7, 8}, "d": true}
-
-	// pdiff := prettydiff(a, b)
-	// fmt.Println(pdiff)
-
-	a := map[string]any{
-		"a": 123,
-		"b": 456,
-		"c": []int{7, 10, 9},
-		"e": map[string]any{
-			"d": 1,
-			"f": true,
-			"g": "hello",
-		},
-	}
-	b := map[string]any{
-		"a": 125,
-		"c": []int{7, 8},
-		"d": true,
-		"e": map[string]any{
-			"g": "goodbye",
-		},
-	}
-	println("!!")
-	am, err := json.Marshal(a)
+	f, close, err := NewFirestore("./.keys/test-bfcae-firebase-adminsdk-jhjzx-65a328f380.json")
 	if err != nil {
 		fmt.Println(err.Error())
+		return
 	}
-	bm, err := json.Marshal(b)
+	defer close()
+	sample := map[string]any{
+		"var": f.DeleteField(),
+	}
+	bsl, err := json.Marshal(sample)
 	if err != nil {
 		fmt.Println(err.Error())
+		return
 	}
-	by, err := applyDiffPatch(am, bm)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	fmt.Println(string(by))
-
-	by, err = getDiffPatch(am, by)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	fmt.Println(string(by))
-
+	fmt.Println(string(bsl))
 }
