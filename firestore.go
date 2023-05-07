@@ -160,7 +160,7 @@ func (f Firefriend) DeleteDoc(docPath string) error {
 }
 
 // DeleteField returns the firestore Delete value which can be set on a nested
-// data field within a Set/Update operation. The field will be removed when 
+// data field within a Set/Update operation. The field will be removed when
 // UpdateDoc or SetDoc is called.
 func (f Firefriend) DeleteField() any {
 	return firestore.Delete

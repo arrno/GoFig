@@ -107,8 +107,28 @@ func (m *Migrator) SetDeleteFlag(flag string) {
 	m.deleteFlag = flag
 }
 
+type SerializeMode int
+
+const (
+	Serialize SerializeMode = iota
+	DeSerialize
+)
+
 // toggleDeleteFlag either serializes or deserializes the deleteFlag values on all staged Change structs.
-func (m *Migrator) toggleDeleteFlag() {}
+func (m *Migrator) toggleDeleteFlag(data *map[string]any, mode SerializeMode) {
+	var before any
+	var after any
+	// TODO
+	switch mode {
+	case Serialize:
+		before = m.database.DeleteField()
+		after = m.deleteFlag
+	case DeSerialize:
+		before = m.deleteFlag
+		after = m.database.DeleteField()
+	}
+	fmt.Println(before, after)
+}
 
 // CrunchMigration is run after all changes are staged. This function validates and solves all of the changes.
 // No changes are pushed to the database.
@@ -216,6 +236,7 @@ func (s Stager) Update(docPath string, data map[string]any, instruction string) 
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
+
 // Set stages a new Set change on the Migrator.
 func (s Stager) Set(docPath string, data map[string]any, instruction string) error {
 	before, err := s.migrator.database.GetDocData(docPath)
@@ -226,6 +247,7 @@ func (s Stager) Set(docPath string, data map[string]any, instruction string) err
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
+
 // Add stages a new Add change on the Migrator.
 func (s Stager) Add(colPath string, data map[string]any, instruction string) error {
 	path, err := s.migrator.database.GenDocPath(colPath)
@@ -236,6 +258,7 @@ func (s Stager) Add(colPath string, data map[string]any, instruction string) err
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
+
 // Delete stages a new Delete change on the Migrator.
 func (s Stager) Delete(docPath string) error {
 	before, err := s.migrator.database.GetDocData(docPath)
@@ -246,6 +269,7 @@ func (s Stager) Delete(docPath string) error {
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
+
 // Unknown stages a new change on the Migrator of an Unknown command type.
 func (s Stager) Unknown(docPath string, data map[string]any, instruction string) error {
 	before, err := s.migrator.database.GetDocData(docPath)
