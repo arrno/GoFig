@@ -71,6 +71,7 @@ func (c *Change) SolveChange() error {
 		c.errState = err
 		return err
 	}
+	c.inferPatch()
 	return nil
 }
 
@@ -174,6 +175,17 @@ func (c *Change) inferRollback() error {
 	return nil
 }
 
+// inferPatch attempts to solve for the Change's patch value.
+// This may be needed for rollbacks where we only have before and instructions.
+func (c *Change) inferPatch() {
+
+	if len(c.patch) == 0 &&
+		(c.command == MigratorAdd || c.command == MigratorSet || c.command == MigratorUpdate) {
+		c.patch = c.after
+	}
+
+}
+
 // inferPrettyDiff attempts to solve for the Change's prettyDiff value.
 func (c *Change) inferPrettyDiff() error {
 
@@ -192,13 +204,16 @@ func (c *Change) inferPrettyDiff() error {
 
 // Present prints the Change's state to stdout.
 func (c *Change) Present() {
-	fmt.Println(c.docPath + fmt.Sprintf("	[%s]", strings.ToUpper(c.commandString())) + "\n")
+	fmt.Println("Target:	" + c.docPath + fmt.Sprintf("	>> [%s]", strings.ToUpper(c.commandString())) + "\n")
 	if c.errState != nil {
-		fmt.Println("< ERROR STATE... cannot execute changes. >")
+		fmt.Println("< !!! ERROR STATE !!! >")
 		fmt.Println(c.errState.Error())
 		return
+	} else if len(c.prettyDiff) == 0 {
+		fmt.Println("< no changes >")
+	} else {
+		fmt.Println(c.prettyDiff)
 	}
-	fmt.Println(c.prettyDiff)
 }
 
 // pushChange executes this change unit against the database.

@@ -62,7 +62,8 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 // Name returns a hash for the underlying firestore database name. This may
 // be useful for guarding against pushing changes to the wrong database.
 func (f Firefriend) Name() string {
-	return strings.Split(f.client.Doc("__init__/__init__").Path, "__init__/__init__")[0]
+	s := strings.Split(f.client.Doc("__init__/__init__").Path, "__init__/__init__")[0]
+	return strings.Split(s, "/databases/(default)/documents/")[0]
 }
 
 // docRef converts a string path to a firestore document reference.

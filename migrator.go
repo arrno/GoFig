@@ -131,7 +131,7 @@ const (
 // toggleDeleteFlag either serializes or deserializes the deleteFlag values on all staged Change structs.
 // The original is not changed rather, a copy is returned.
 func (m *Migrator) toggleDeleteFlag(data map[string]any, mode TransformMode) map[string]any {
-	
+
 	var before any
 	var after any
 
@@ -146,7 +146,7 @@ func (m *Migrator) toggleDeleteFlag(data map[string]any, mode TransformMode) map
 		before = m.deleteFlag
 		after = nil
 	}
-	
+
 	return Transform(data, before, after).(map[string]any)
 
 }
@@ -166,20 +166,25 @@ func (m *Migrator) PrepMigration() error {
 
 // PresentMigration prints all the staged changes to stdout for review.
 func (m *Migrator) PresentMigration() {
+	m.printSeparator()
 	fmt.Printf(
-		"\nMigration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
+		"Migration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
 		m.name,
 		m.database.Name(),
 		m.storagePath,
 		m.hasRun,
 	)
-	fmt.Println("\n<--------------------------------------------------->")
-	fmt.Println("<--------------------------------------------------->\n")
+	m.printSeparator()
 	for _, c := range m.changes {
 		c.Present()
-		fmt.Println("\n<--------------------------------------------------->")
-		fmt.Println("<--------------------------------------------------->\n")
+		m.printSeparator()
 	}
+}
+
+// printSeparator prints a horizontal separator to stdout
+func (m *Migrator) printSeparator() {
+	fmt.Println("\n<--------------------------------------------------->")
+	fmt.Println("<--------------------------------------------------->\n")
 }
 
 // RunMigration executes all of the staged changes against the database.
