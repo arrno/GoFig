@@ -98,3 +98,10 @@ func Transform(data any, before any, after any) any {
 	}
 	return data
 }
+
+func MaxNum[T int | float32 | float64](a T, b T) T {
+	if a > b {
+		return a
+	}
+	return b
+}

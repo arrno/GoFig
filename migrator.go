@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -166,7 +167,11 @@ func (m *Migrator) PrepMigration() error {
 
 // PresentMigration prints all the staged changes to stdout for review.
 func (m *Migrator) PresentMigration() {
-	m.printSeparator()
+
+	lngth := MaxNum(len(m.name), len(m.database.Name()))
+	lngth = MaxNum(lngth, len(m.storagePath)) + 26
+	m.printSeparator(lngth)
+	
 	fmt.Printf(
 		"Migration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
 		m.name,
@@ -174,17 +179,20 @@ func (m *Migrator) PresentMigration() {
 		m.storagePath,
 		m.hasRun,
 	)
-	m.printSeparator()
 	for _, c := range m.changes {
+		lngth = len(c.docPath) + len(c.commandString()) + 19
+		m.printSeparator(lngth)
 		c.Present()
-		m.printSeparator()
 	}
+	m.printSeparator(lngth)
 }
 
 // printSeparator prints a horizontal separator to stdout
-func (m *Migrator) printSeparator() {
-	fmt.Println("\n<--------------------------------------------------->")
-	fmt.Println("<--------------------------------------------------->\n")
+func (m *Migrator) printSeparator(length int) {
+	dashes := strings.Repeat("-", length)
+	// 50
+	fmt.Printf("\n<%s>\n", dashes)
+	fmt.Printf("<%s>\n\n", dashes)
 }
 
 // RunMigration executes all of the staged changes against the database.
