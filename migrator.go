@@ -171,7 +171,7 @@ func (m *Migrator) PresentMigration() {
 	lngth := MaxNum(len(m.name), len(m.database.Name()))
 	lngth = MaxNum(lngth, len(m.storagePath)) + 26
 	m.printSeparator(lngth)
-	
+
 	fmt.Printf(
 		"Migration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
 		m.name,
@@ -207,8 +207,8 @@ func (m *Migrator) RunMigration() {
 			},
 		)
 		if err != nil {
+			fmt.Println("\n< !!! EXECUTION ERROR !!! >")
 			fmt.Println(c.docPath)
-			fmt.Println("\n< ERROR EXEC... error on change execution. >")
 			fmt.Println(err.Error() + "\n")
 		}
 	}

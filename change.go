@@ -204,7 +204,7 @@ func (c *Change) inferPrettyDiff() error {
 
 // Present prints the Change's state to stdout.
 func (c *Change) Present() {
-	fmt.Println("Target:	" + c.docPath + fmt.Sprintf("	>> [%s]", strings.ToUpper(c.commandString())) + "\n")
+	fmt.Println("Target:	" + clrTheme().blue(c.docPath) + fmt.Sprintf("	>> [%s]", strings.ToUpper(c.commandString())) + "\n")
 	if c.errState != nil {
 		fmt.Println("< !!! ERROR STATE !!! >")
 		fmt.Println(c.errState.Error())

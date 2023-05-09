@@ -3,11 +3,46 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"reflect"
+	"runtime"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	"github.com/fatih/color"
 	"github.com/nsf/jsondiff"
 )
+
+type colorTheme struct {
+	green  func(a ...interface{}) string
+	red    func(a ...interface{}) string
+	yellow func(a ...interface{}) string
+	blue   func(a ...interface{}) string
+}
+
+var clrthm colorTheme
+
+// clrTheme is a function to build and return clrthm of type colorTheme which is a singleton.
+func clrTheme() *colorTheme {
+
+	if clrthm.green == nil {
+		green := color.New(color.Bold, color.FgGreen).SprintFunc()
+		yellow := color.New(color.Bold, color.FgYellow).SprintFunc()
+		red := color.New(color.Bold, color.FgRed).SprintFunc()
+		blue := color.New(color.Bold, color.FgBlue).SprintFunc()
+
+		clr := colorTheme{
+			green,
+			red,
+			yellow,
+			blue,
+		}
+
+		clrthm = clr
+	}
+
+	return &clrthm
+}
 
 // PrettyDiff returns the pretty formatted difference between a before and after map.
 func PrettyDiff(b map[string]any, a map[string]any) (string, error) {
@@ -24,17 +59,18 @@ func PrettyDiff(b map[string]any, a map[string]any) (string, error) {
 
 	opt := jsondiff.Options{
 		Added: jsondiff.Tag{
-			Begin: "+ ",
+			Begin: clrTheme().green("+ "),
 		},
 		Removed: jsondiff.Tag{
-			Begin: "- ",
+			Begin: clrTheme().red("- "),
 		},
-		ChangedSeparator: " -> ",
+		ChangedSeparator: clrTheme().yellow(" -> "),
 		Indent:           "    ",
 		SkipMatches:      true,
 	}
 
 	_, s := jsondiff.Compare(bm, am, &opt)
+
 	return s, nil
 
 }
@@ -104,4 +140,25 @@ func MaxNum[T int | float32 | float64](a T, b T) T {
 		return a
 	}
 	return b
+}
+
+var clearMap map[string]func() = map[string]func(){
+	"linux": func() {
+		cmd := exec.Command("clear")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	},
+	"windows": func() {
+		cmd := exec.Command("cmd", "/c", "cls")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	},
+}
+
+func ClearTerm() {
+	if runtime.GOOS == "windows" {
+		clearMap["windows"]()
+		return
+	}
+	clearMap["linux"]()
 }

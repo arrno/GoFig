@@ -1,7 +1,6 @@
 # Todo
 test/verify
 delete fields, docrefs, timestamps
-color code pretty diffs
 save logs to disc
 storagePath as remote collection...
 javascript SDK ->
