@@ -229,21 +229,22 @@ func (m *Migrator) LoadMigration() error {
 	m.hasRun = mig.Executed
 	m.changes = []*Change{}
 	for _, unit := range mig.ChangeUnits {
+		patch := DeSerializeData(unit.Patch, m.database).(map[string]any)
 		switch unit.Command {
 		case MigratorAdd:
-			err = m.Stage().Set(unit.DocPath, unit.Patch, unit.Instruction)
+			err = m.Stage().Set(unit.DocPath, patch, unit.Instruction)
 			break
 		case MigratorSet:
-			err = m.Stage().Set(unit.DocPath, unit.Patch, unit.Instruction)
+			err = m.Stage().Set(unit.DocPath, patch, unit.Instruction)
 			break
 		case MigratorUpdate:
-			err = m.Stage().Update(unit.DocPath, unit.Patch, unit.Instruction)
+			err = m.Stage().Update(unit.DocPath, patch, unit.Instruction)
 			break
 		case MigratorDelete:
 			err = m.Stage().Delete(unit.DocPath)
 			break
 		default:
-			err = m.Stage().Unknown(unit.DocPath, unit.Patch, unit.Instruction)
+			err = m.Stage().Unknown(unit.DocPath, patch, unit.Instruction)
 		}
 		if err != nil {
 			return err
@@ -288,7 +289,7 @@ func (s Stager) Update(docPath string, data map[string]any, instruction string) 
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, data, MigratorUpdate, instruction)
+	change := NewChange(docPath, before, data, MigratorUpdate, instruction, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
@@ -299,7 +300,7 @@ func (s Stager) Set(docPath string, data map[string]any, instruction string) err
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, data, MigratorSet, instruction)
+	change := NewChange(docPath, before, data, MigratorSet, instruction, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
@@ -310,7 +311,7 @@ func (s Stager) Add(colPath string, data map[string]any, instruction string) err
 	if err != nil {
 		return err
 	}
-	change := NewChange(path, map[string]any{}, data, MigratorSet, instruction)
+	change := NewChange(path, map[string]any{}, data, MigratorSet, instruction, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
@@ -321,7 +322,7 @@ func (s Stager) Delete(docPath string) error {
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, map[string]any{}, MigratorDelete, "")
+	change := NewChange(docPath, before, map[string]any{}, MigratorDelete, "", s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
@@ -332,7 +333,7 @@ func (s Stager) Unknown(docPath string, data map[string]any, instruction string)
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, data, MigratorUnknown, instruction)
+	change := NewChange(docPath, before, data, MigratorUnknown, instruction, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }

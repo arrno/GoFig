@@ -5,10 +5,11 @@ import (
 )
 
 func main() {
+
 	conf := map[string]string{
 		"keyPath":     "./.keys/test-bfcae-firebase-adminsdk-jhjzx-65a328f380.json",
 		"storagePath": "./local",
-		"name":        "update_2",
+		"name":        "update_2_rollback",
 	}
 
 	fig, err := NewController(conf)
@@ -19,26 +20,5 @@ func main() {
 	}
 
 	defer fig.Close()
-
-	fig.Stage().Add("fig", map[string]any{
-		"foo": "bar",
-		"val": false,
-	}, "")
-	fig.Stage().Update("fig/CneTLRz-5nY8prwhdHJq", map[string]any{
-		"a": 126,
-		"c": []int{
-			8,
-			10,
-		},
-		"e": map[string]any{
-			"f": false,
-			"g": "goodbye",
-		},
-		"f": map[string]any{
-			"nested": "nest",
-		},
-	}, "")
-
-	fig.ManageStagedMigration(false)
 
 }

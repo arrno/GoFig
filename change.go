@@ -32,16 +32,24 @@ type Change struct {
 	prettyDiff  string
 	rollback    string
 	errState    error
+	database    Firestore
+	cache       map[string]map[string]any
 }
 
 // NewChange is a Change factory.
-func NewChange(docPath string, before map[string]any, patch map[string]any, command Command, instruction string) *Change {
+func NewChange(docPath string,
+	before map[string]any,
+	patch map[string]any,
+	command Command,
+	instruction string,
+	database Firestore) *Change {
 	c := Change{
 		docPath:     docPath,
 		before:      before,
 		patch:       patch,
 		command:     command,
 		instruction: instruction,
+		database:    database,
 		errState:    errors.New("Change has not yet been solved."),
 	}
 	return &c
@@ -93,6 +101,9 @@ func (c *Change) commandString() string {
 
 // inferAfter attempts to solve for the Change's after value.
 func (c *Change) inferAfter() error {
+
+	needsDeserialize := false
+
 	if c.command != MigratorUnknown {
 		switch c.command {
 		case MigratorSet:
@@ -105,18 +116,22 @@ func (c *Change) inferAfter() error {
 			c.after = map[string]any{}
 			return nil
 		}
+
 	}
 	if c.before == nil || (c.patch == nil && c.instruction == "") {
 		return errors.New("Need before and patch/instruction to infer after.")
+
 	}
 	bm, err := json.Marshal(c.before)
 	if err != nil {
 		return err
 	}
+
 	var pm []byte
 	if c.patch != nil {
 		pm, err = json.Marshal(c.patch)
 	} else {
+		needsDeserialize = true
 		pm = []byte(c.instruction)
 	}
 	if err != nil {
@@ -126,10 +141,15 @@ func (c *Change) inferAfter() error {
 	if err != nil {
 		return err
 	}
+
 	var ua map[string]any
 	json.Unmarshal(after, &ua)
 	c.after = ua
+	if needsDeserialize {
+		c.after = DeSerializeData(c.after, c.database).(map[string]any)
+	}
 	return nil
+
 }
 
 // inferCommand attempts to solve for the Change's command value.
@@ -159,11 +179,12 @@ func (c *Change) inferRollback() error {
 	if c.before == nil || c.after == nil {
 		return errors.New("Need before and after value to infer rollback.")
 	}
-	a, err := json.Marshal(c.after)
+	sBefore, sAfter := c.beforeAfterCache()
+	a, err := json.Marshal(sAfter)
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(c.before)
+	b, err := json.Marshal(sBefore)
 	if err != nil {
 		return err
 	}
@@ -193,7 +214,8 @@ func (c *Change) inferPrettyDiff() error {
 		return errors.New("Need before and after value to infer pretty diff.")
 	}
 
-	s, err := PrettyDiff(c.before, c.after)
+	sBefore, sAfter := c.beforeAfterCache()
+	s, err := PrettyDiff(sBefore, sAfter)
 	if err != nil {
 		return err
 	}
@@ -204,15 +226,27 @@ func (c *Change) inferPrettyDiff() error {
 
 // Present prints the Change's state to stdout.
 func (c *Change) Present() {
+
 	fmt.Println("Target:	" + clrTheme().blue(c.docPath) + fmt.Sprintf("	>> [%s]", strings.ToUpper(c.commandString())) + "\n")
+
 	if c.errState != nil {
 		fmt.Println("< !!! ERROR STATE !!! >")
 		fmt.Println(c.errState.Error())
 		return
+
 	} else if len(c.prettyDiff) == 0 {
 		fmt.Println("< no changes >")
+
 	} else {
-		fmt.Println(c.prettyDiff)
+		replace := []string{"__timestamp__", "__delete__", "__docref__"}
+		s := c.prettyDiff
+
+		for _, r := range replace {
+			s = strings.Replace(s, `"`+r, "", 1)
+			s = strings.Replace(s, r+`"`, "", 1)
+		}
+
+		fmt.Println(s)
 	}
 }
 
@@ -229,4 +263,19 @@ func (c *Change) pushChange(database Firestore, transformer func(map[string]any)
 	default:
 		return database.DeleteDoc(c.docPath)
 	}
+}
+
+func (c *Change) beforeAfterCache() (map[string]any, map[string]any) {
+	// var sBefore, sAfter string
+	sBefore, ok := c.cache["serialBefore"]
+	if !ok {
+		sBefore = SerializeData(c.before, c.database).(map[string]any)
+		c.cache["serialBefore"] = sBefore
+	}
+	sAfter, ok := c.cache["serialAfter"]
+	if !ok {
+		sAfter = SerializeData(c.after, c.database).(map[string]any)
+		c.cache["serialAfter"] = sAfter
+	}
+	return sBefore, sAfter
 }

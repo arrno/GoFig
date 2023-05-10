@@ -20,6 +20,7 @@ type Firestore interface {
 	SetDoc(docPath string, data map[string]any) error
 	DeleteDoc(docPath string) error
 	DeleteField() any
+	RefField(docPath string) (any, error)
 	Name() string
 }
 
@@ -167,4 +168,10 @@ func (f Firefriend) DeleteDoc(docPath string) error {
 // UpdateDoc or SetDoc is called.
 func (f Firefriend) DeleteField() any {
 	return firestore.Delete
+}
+
+// RefField is guaranteed to return something that will be properly
+// serialized/deserialized and stored as a firestore document reference
+func (f Firefriend) RefField(docPath string) (any, error) {
+	return f.docRef(docPath)
 }

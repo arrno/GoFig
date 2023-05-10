@@ -7,7 +7,10 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
+	"strings"
+	"time"
 
+	"cloud.google.com/go/firestore"
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/fatih/color"
 	"github.com/nsf/jsondiff"
@@ -83,6 +86,85 @@ func GetDiffPatch(original []byte, target []byte) ([]byte, error) {
 // ApplyDiffPatch applies the json diff patch to the original and returns the result.
 func ApplyDiffPatch(original []byte, patch []byte) ([]byte, error) {
 	return jsonpatch.MergePatch(original, patch)
+}
+
+// SerializeData converts timestamps, docrefs, and other complex objects into marked strings.
+func SerializeData(data any, f Firestore) any {
+
+	if reflect.DeepEqual(data, f.DeleteField()) {
+		return "__delete__<delete>__delete__"
+	}
+
+	v := reflect.ValueOf(data)
+
+	switch k := v.Kind(); k {
+	case reflect.Map:
+		newData := map[string]any{}
+		for k, v := range data.(map[string]any) {
+			newData[k] = SerializeData(v, f)
+		}
+		return newData
+
+	case reflect.Slice:
+		newData := []any{}
+		for _, d := range data.([]any) {
+			newData = append(newData, SerializeData(d, f))
+		}
+		return newData
+
+	default:
+		_, ok := data.(time.Time)
+		if ok {
+			return "__timestamp__" + data.(time.Time).Format("2006-01-02T15:04:05.000Z") + "__timestamp__"
+		}
+
+		_, ok = data.(*firestore.DocumentRef)
+		if ok && data.(*firestore.DocumentRef) != nil {
+			return "__docref__" + data.(*firestore.DocumentRef).Path + "__docref__"
+		}
+
+	}
+
+	return data
+}
+
+// DeSerializeData converts marked strings into timestamps, docrefs, and other complex objects.
+func DeSerializeData(data any, f Firestore) any {
+
+	switch k := reflect.ValueOf(data).Kind(); k {
+
+	case reflect.Map:
+		newData := map[string]any{}
+		for k, v := range data.(map[string]any) {
+			newData[k] = DeSerializeData(v, f)
+		}
+		return newData
+
+	case reflect.Slice:
+		newData := []any{}
+		for _, d := range data.([]any) {
+			newData = append(newData, DeSerializeData(d, f))
+		}
+		return newData
+
+	case reflect.String:
+		if strings.HasPrefix(data.(string), "__timestamp__") {
+			time, _ := time.Parse("2006-01-02T15:04:05.000Z", strings.Replace(data.(string), "__timestamp__", "", -1))
+			return time
+
+		} else if strings.HasPrefix(data.(string), "__docref__") {
+			path := strings.Replace(data.(string), "__docref__", "", -1)
+			path = strings.Split(path, "/(default)/documents/")[1]
+			ref, _ := f.RefField(path)
+			return ref
+
+		} else if strings.HasPrefix(data.(string), "__delete__") {
+			return f.DeleteField()
+
+		}
+	}
+
+	return data
 }
 
 // StoreJson saves data as json to disc.
