@@ -51,6 +51,7 @@ func NewChange(docPath string,
 		instruction: instruction,
 		database:    database,
 		errState:    errors.New("Change has not yet been solved."),
+		cache:       map[string]map[string]any{},
 	}
 	return &c
 }
@@ -102,8 +103,6 @@ func (c *Change) commandString() string {
 // inferAfter attempts to solve for the Change's after value.
 func (c *Change) inferAfter() error {
 
-	needsDeserialize := false
-
 	if c.command != MigratorUnknown {
 		switch c.command {
 		case MigratorSet:
@@ -120,18 +119,19 @@ func (c *Change) inferAfter() error {
 	}
 	if c.before == nil || (c.patch == nil && c.instruction == "") {
 		return errors.New("Need before and patch/instruction to infer after.")
-
 	}
-	bm, err := json.Marshal(c.before)
+
+	sBefore := c.fetchCache("sBefore", c.before)
+	sPatch := c.fetchCache("sPatch", c.patch)
+	bm, err := json.Marshal(sBefore)
 	if err != nil {
 		return err
 	}
 
 	var pm []byte
 	if c.patch != nil {
-		pm, err = json.Marshal(c.patch)
+		pm, err = json.Marshal(sPatch)
 	} else {
-		needsDeserialize = true
 		pm = []byte(c.instruction)
 	}
 	if err != nil {
@@ -144,10 +144,7 @@ func (c *Change) inferAfter() error {
 
 	var ua map[string]any
 	json.Unmarshal(after, &ua)
-	c.after = ua
-	if needsDeserialize {
-		c.after = DeSerializeData(c.after, c.database).(map[string]any)
-	}
+	c.after = DeSerializeData(ua, c.database).(map[string]any)
 	return nil
 
 }
@@ -265,17 +262,15 @@ func (c *Change) pushChange(database Firestore, transformer func(map[string]any)
 	}
 }
 
+func (c *Change) fetchCache(key string, data map[string]any) map[string]any {
+	sVar, ok := c.cache[key]
+	if !ok {
+		sVar = SerializeData(data, c.database).(map[string]any)
+		c.cache[key] = sVar
+	}
+	return sVar
+}
 func (c *Change) beforeAfterCache() (map[string]any, map[string]any) {
 	// var sBefore, sAfter string
-	sBefore, ok := c.cache["serialBefore"]
-	if !ok {
-		sBefore = SerializeData(c.before, c.database).(map[string]any)
-		c.cache["serialBefore"] = sBefore
-	}
-	sAfter, ok := c.cache["serialAfter"]
-	if !ok {
-		sAfter = SerializeData(c.after, c.database).(map[string]any)
-		c.cache["serialAfter"] = sAfter
-	}
-	return sBefore, sAfter
+	return c.fetchCache("serialBefore",c.before), c.fetchCache("serialAfter", c.after)
 }

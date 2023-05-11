@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 func main() {
@@ -20,5 +21,14 @@ func main() {
 	}
 
 	defer fig.Close()
+
+	d := map[string]any{
+		"a": fig.mig.database.DeleteField(),
+		"d": time.Now(),
+		"z": fig.mig.database.RefField("fig/DLMwCPG41s2p_dcQrYA3"),
+	}
+	// fmt.Println(SerializeData(d, fig.mig.database))
+	fig.Stage().Update("fig/CneTLRz-5nY8prwhdHJq",d,"")
+	fig.ManageStagedMigration(false)
 
 }

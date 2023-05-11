@@ -155,7 +155,7 @@ func DeSerializeData(data any, f Firestore) any {
 		} else if strings.HasPrefix(data.(string), "__docref__") {
 			path := strings.Replace(data.(string), "__docref__", "", -1)
 			path = strings.Split(path, "/(default)/documents/")[1]
-			ref, _ := f.RefField(path)
+			ref := f.RefField(path)
 			return ref
 
 		} else if strings.HasPrefix(data.(string), "__delete__") {
