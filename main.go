@@ -10,7 +10,7 @@ func main() {
 	conf := Config{
 		keyPath:     "./.keys/test-bfcae-firebase-adminsdk-jhjzx-65a328f380.json",
 		storagePath: "./local",
-		name:        "update",
+		name:        "initial",
 	}
 
 	fig, err := NewController(conf)
@@ -22,13 +22,29 @@ func main() {
 
 	defer fig.Close()
 
+	// set initial state
 	d := map[string]any{
-		"a": fig.DeleteField(),
-		"d": time.Now(),
-		"z": fig.RefField("fig/DLMwCPG41s2p_dcQrYA3"),
+		"a": time.Now(),
+		"b": time.Now(),
+		"c": fig.RefField("fig/DLMwCPG41s2p_dcQrYA3"),
+		"d": fig.RefField("fig/test"),
 	}
-	// fmt.Println(SerializeData(d, fig.mig.database))
-	fig.Stage().Update("fig/CneTLRz-5nY8prwhdHJq", d, "")
+	fig.Stage().Set("fig/fog", d, "")
 	fig.ManageStagedMigration(false)
+
+	// set updated state
+	fig.mig.name = "updated"
+	fig.mig.changes = []*Change{}
+	dd := map[string]any{
+		"a": time.Now(),
+		"d": "fig/test",
+		"c": fig.DeleteField(),
+	}
+	fig.Stage().Update("fig/fog", dd, "")
+	fig.ManageStagedMigration(false)
+
+	// rollback updated state
+	fig.mig.name = "updated_rollback"
+	fig.ManageStagedMigration(true)
 
 }

@@ -129,10 +129,10 @@ func (c *Change) inferAfter() error {
 	}
 
 	var pm []byte
-	if c.patch != nil {
-		pm, err = json.Marshal(sPatch)
-	} else {
+	if len(c.instruction) > 0 && len(c.patch) == 0 {
 		pm = []byte(c.instruction)
+	} else {
+		pm, err = json.Marshal(sPatch)
 	}
 	if err != nil {
 		return err
@@ -239,8 +239,8 @@ func (c *Change) Present() {
 		s := c.prettyDiff
 
 		for _, r := range replace {
-			s = strings.Replace(s, `"`+r, "", 1)
-			s = strings.Replace(s, r+`"`, "", 1)
+			s = strings.Replace(s, `"`+r, "", -1)
+			s = strings.Replace(s, r+`"`, "", -1)
 		}
 
 		fmt.Println(s)

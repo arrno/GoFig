@@ -120,7 +120,9 @@ func SerializeData(data any, f Firestore) any {
 
 		_, ok = data.(*firestore.DocumentRef)
 		if ok && data.(*firestore.DocumentRef) != nil {
-			return "__docref__" + data.(*firestore.DocumentRef).Path + "__docref__"
+			path := data.(*firestore.DocumentRef).Path
+			path = strings.Split(path, "/(default)/documents/")[1]
+			return "__docref__" + path + "__docref__"
 		}
 
 	}
@@ -154,7 +156,6 @@ func DeSerializeData(data any, f Firestore) any {
 
 		} else if strings.HasPrefix(data.(string), "__docref__") {
 			path := strings.Replace(data.(string), "__docref__", "", -1)
-			path = strings.Split(path, "/(default)/documents/")[1]
 			ref := f.RefField(path)
 			return ref
 
