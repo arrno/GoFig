@@ -1,7 +1,6 @@
 # Todo
-test/verify : delete/refs/time/serialization/deserialization
-extend block header to max line length of diff
-test
+tests
+allow for specific type declarations in nested lists/maps
 ---
 storagePath as remote collection...
 javascript SDK ->

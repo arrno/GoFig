@@ -226,7 +226,6 @@ func MaxNum[T int | float32 | float64](a T, b T) T {
 	return b
 }
 
-
 var clearMap map[string]func() = map[string]func(){
 	"linux": func() {
 		cmd := exec.Command("clear")

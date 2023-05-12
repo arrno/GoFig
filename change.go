@@ -228,7 +228,7 @@ func (c *Change) Present() ([]string, string) {
 
 	if c.errState != nil {
 		out += fmt.Sprintf("< !!! ERROR STATE !!! >\n")
-		out += fmt.Sprintf(c.errState.Error()+"\n")
+		out += fmt.Sprintf(c.errState.Error() + "\n")
 		return header, out
 
 	} else if len(c.prettyDiff) == 0 {
@@ -243,7 +243,7 @@ func (c *Change) Present() ([]string, string) {
 			s = strings.Replace(s, r+`"`, "", -1)
 		}
 
-		out += fmt.Sprintf(s+"\n")
+		out += fmt.Sprintf(s + "\n")
 	}
 	return header, out
 

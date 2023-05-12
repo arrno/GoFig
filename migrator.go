@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -175,18 +176,18 @@ func (m *Migrator) PresentMigration() {
 
 	fmt.Printf(
 		"Migration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
-		m.name,
-		m.database.Name(),
-		m.storagePath,
-		m.hasRun,
+		"  "+m.name,
+		"  "+m.database.Name(),
+		"  "+m.storagePath,
+		"  "+strconv.FormatBool(m.hasRun),
 	)
 	for _, c := range m.changes {
 		lngth = len(c.docPath) + len(c.commandString()) + 19
 		header, cOut := c.Present()
 		lineLength, _ := LongestLine(cOut)
-		maxLength := MaxNum(lngth, lineLength - 12)
+		maxLength := MaxNum(lngth, lineLength-12)
 		m.printSeparator(maxLength)
-		headerPad := strings.Repeat(" ", maxLength - utf8.RuneCountInString(header[0]+header[1]) + 14)
+		headerPad := strings.Repeat(" ", maxLength-utf8.RuneCountInString(header[0]+header[1])+14)
 		fmt.Print(strings.Join(header, headerPad))
 		fmt.Print(cOut)
 	}
