@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // WorkUnit is one change mapped to one document within a migration.
@@ -181,8 +182,13 @@ func (m *Migrator) PresentMigration() {
 	)
 	for _, c := range m.changes {
 		lngth = len(c.docPath) + len(c.commandString()) + 19
-		m.printSeparator(lngth)
-		c.Present()
+		header, cOut := c.Present()
+		lineLength, _ := LongestLine(cOut)
+		maxLength := MaxNum(lngth, lineLength - 12)
+		m.printSeparator(maxLength)
+		headerPad := strings.Repeat(" ", maxLength - utf8.RuneCountInString(header[0]+header[1]) + 14)
+		fmt.Print(strings.Join(header, headerPad))
+		fmt.Print(cOut)
 	}
 	m.printSeparator(lngth)
 }

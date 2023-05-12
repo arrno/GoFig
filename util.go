@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"cloud.google.com/go/firestore"
 	jsonpatch "github.com/evanphx/json-patch/v5"
@@ -225,6 +226,7 @@ func MaxNum[T int | float32 | float64](a T, b T) T {
 	return b
 }
 
+
 var clearMap map[string]func() = map[string]func(){
 	"linux": func() {
 		cmd := exec.Command("clear")
@@ -238,10 +240,25 @@ var clearMap map[string]func() = map[string]func(){
 	},
 }
 
+// clearTerm clears the terminal.
 func ClearTerm() {
 	if runtime.GOOS == "windows" {
 		clearMap["windows"]()
 		return
 	}
 	clearMap["linux"]()
+}
+
+// longestLine returns the length and text of the longest line given an input string.
+func LongestLine(s string) (int, string) {
+	subString := s
+	maxLen := 0
+	for _, line := range strings.Split(s, "\n") {
+		l := utf8.RuneCountInString(line)
+		if maxLen < l {
+			maxLen = l
+			subString = line
+		}
+	}
+	return maxLen, subString
 }

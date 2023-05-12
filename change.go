@@ -221,18 +221,18 @@ func (c *Change) inferPrettyDiff() error {
 	return nil
 }
 
-// Present prints the Change's state to stdout.
-func (c *Change) Present() {
-
-	fmt.Println("Target:	" + clrTheme().blue(c.docPath) + fmt.Sprintf("	>> [%s]", strings.ToUpper(c.commandString())) + "\n")
+// Present returns a pretty representation of the change for printing to stdout.
+func (c *Change) Present() ([]string, string) {
+	out := ""
+	header := []string{"Target: " + clrTheme().blue(c.docPath), fmt.Sprintf(" >> [%s]", strings.ToUpper(c.commandString())) + "\n\n"}
 
 	if c.errState != nil {
-		fmt.Println("< !!! ERROR STATE !!! >")
-		fmt.Println(c.errState.Error())
-		return
+		out += fmt.Sprintf("< !!! ERROR STATE !!! >\n")
+		out += fmt.Sprintf(c.errState.Error()+"\n")
+		return header, out
 
 	} else if len(c.prettyDiff) == 0 {
-		fmt.Println("< no changes >")
+		out += fmt.Sprintf("< no changes >\n")
 
 	} else {
 		replace := []string{"__timestamp__", "__delete__", "__docref__"}
@@ -243,8 +243,10 @@ func (c *Change) Present() {
 			s = strings.Replace(s, r+`"`, "", -1)
 		}
 
-		fmt.Println(s)
+		out += fmt.Sprintf(s+"\n")
 	}
+	return header, out
+
 }
 
 // pushChange executes this change unit against the database.
