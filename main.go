@@ -7,10 +7,10 @@ import (
 
 func main() {
 
-	conf := map[string]string{
-		"keyPath":     "./.keys/test-bfcae-firebase-adminsdk-jhjzx-65a328f380.json",
-		"storagePath": "./local",
-		"name":        "update_2_rollback",
+	conf := Config{
+		keyPath:     "./.keys/test-bfcae-firebase-adminsdk-jhjzx-65a328f380.json",
+		storagePath: "./local",
+		name:        "update",
 	}
 
 	fig, err := NewController(conf)
@@ -23,12 +23,12 @@ func main() {
 	defer fig.Close()
 
 	d := map[string]any{
-		"a": fig.mig.database.DeleteField(),
+		"a": fig.DeleteField(),
 		"d": time.Now(),
-		"z": fig.mig.database.RefField("fig/DLMwCPG41s2p_dcQrYA3"),
+		"z": fig.RefField("fig/DLMwCPG41s2p_dcQrYA3"),
 	}
 	// fmt.Println(SerializeData(d, fig.mig.database))
-	fig.Stage().Update("fig/CneTLRz-5nY8prwhdHJq",d,"")
+	fig.Stage().Update("fig/CneTLRz-5nY8prwhdHJq", d, "")
 	fig.ManageStagedMigration(false)
 
 }

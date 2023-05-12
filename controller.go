@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -9,29 +8,24 @@ import (
 // controller is meant to orchestrate Migrator functionality.
 type Controller struct {
 	mig    *Migrator
-	config map[string]string
+	config Config
 	Close  func()
 }
 
+// Config is the expected structure for controller config
+type Config struct {
+	keyPath     string
+	storagePath string
+	name        string
+}
+
 // NewController is a controller factory. Defer *controller.Close() after initialization.
-func NewController(config map[string]string) (*Controller, error) {
-	keyPath, ok := config["keyPath"]
-	if !ok {
-		return nil, errors.New("Missing 'keyPath' config variable.")
-	}
-	storagePath, ok := config["storagePath"]
-	if !ok {
-		return nil, errors.New("Missing 'storagePath' config variable.")
-	}
-	name, ok := config["name"]
-	if !ok {
-		return nil, errors.New("Missing 'name' config variable.")
-	}
-	ff, close, err := NewFirestore(keyPath)
+func NewController(config Config) (*Controller, error) {
+	ff, close, err := NewFirestore(config.keyPath)
 	if err != nil {
 		return nil, err
 	}
-	mig := NewMigrator(storagePath, ff, name)
+	mig := NewMigrator(config.storagePath, ff, config.name)
 	c := Controller{
 		config: config,
 		mig:    mig,
@@ -90,4 +84,14 @@ func (c *Controller) promptRun() {
 	} else {
 		fmt.Println("No changes applied.")
 	}
+}
+
+// DeleteField is a shortcut to the controlled database DeleteField
+func (c *Controller) DeleteField() any {
+	return c.mig.database.DeleteField()
+}
+
+// RefField is a shortcut to the controlled database RefField
+func (c *Controller) RefField(docPath string) any {
+	return c.mig.database.RefField(docPath)
 }

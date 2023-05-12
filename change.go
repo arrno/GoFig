@@ -272,5 +272,5 @@ func (c *Change) fetchCache(key string, data map[string]any) map[string]any {
 }
 func (c *Change) beforeAfterCache() (map[string]any, map[string]any) {
 	// var sBefore, sAfter string
-	return c.fetchCache("serialBefore",c.before), c.fetchCache("serialAfter", c.after)
+	return c.fetchCache("serialBefore", c.before), c.fetchCache("serialAfter", c.after)
 }

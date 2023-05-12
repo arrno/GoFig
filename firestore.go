@@ -20,7 +20,7 @@ type Firestore interface {
 	SetDoc(docPath string, data map[string]any) error
 	DeleteDoc(docPath string) error
 	DeleteField() any
-	RefField(docPath string) (any)
+	RefField(docPath string) any
 	Name() string
 }
 
