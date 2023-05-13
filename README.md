@@ -1,18 +1,39 @@
 # GoFig
-Tool for managing NoSQL DB migrations. This tool is in progress with the aim to support Firestore DB migrations soon.
+GoFig is a tool for managing NoSQL DB migrations. At this time, GoFig supports Firestore DB migrations. The GoFig migration manager makes a few guarantees:
+1. The end user will have visibility into all migration changes and effects prior to pushing a migration. The user can then decide to push or cancel the migration.
+2. When a migration is pushed to the database, all the changes presented to the end user are implemented and no other changes/effects are implemented by the migrator.
+3. All changes made by the migrator in a migration job can be completely reversed by staging and pushing the generated `_rollback` migration file.
 
-## Workflow concept:
+## Initialize Migrator
+The migrator is initialized with a few configuration parameters.
+- `keyPath` contains the path location of your firestore admin key.
+- `storagePath` contains a path to any local folder the migrator can use to save or load migration files.
+- `name` is a unique identifier for the migration which will be used when loading or creating migration files.
 
-### New Migration Case
-1. Create new migrator with unique name
-2. Stage changes
-3. Get feedback
-4. Push changes
-5. Migrator auto stores rollback file
+## Stage a Migration
+Once the migrator is initialized, the contents of the migration must be staged. The migration can be staged one of two ways.
+1. Stage each change into the migrator during runtime using the `stage()` utility.
+    - Note available actions are `Add, Update, Set, Delete`
+    - To save a staged migration to storage for later use, leverage the `SaveToFile()` utility
+2. If the `name` of the migration corresponds to an existing migration file, use the `LoadFromFile()` utility to load all changes.
 
-### Load Existing Case (use for rollback)
-1. Create migrator with name of existing file. (for example "X_rollback")
-2. Load migration
-3. Get feedback
-4. Push changes
-5. Migrator auto stores rollback and logs
+## Run a Migration
+Use the `ManageStagedMigration()` utility to initiate a responsive CLI migration process. 
+- The process will present the staged changes and allow you to push or cancel. 
+- If a migration is pushed to the database, a new migration and corresponding `_rollback` file is created in the 'storagePath' folder.
+
+## Rollback
+Rollbacks are identical to any other migration job in format and protocol. To rollback a migration that has been pushed:
+- Initialize a new migration with the `name` of the original migration appended by "_rollback" (For example "my-migration_rollback").
+- When staging the migration, use the `LoadFromFile()` method outlined above under the staging section.
+- Run the migration as you would any other job. The CLI process will be the same.
+- You will recieve a rollback to your rollback if the job is pushed.
+
+## Complex types
+To ensure proper handling of complex types, follow these prococols.
+- For times, feel free to use the standard time utilities.
+- To mark a key or nested key for deletion, use the GoFig `DeleteField` utility.
+- To use document references as values, use the GoFig `RefField` utility.
+
+## To Do
+- Allow for specific type declarations in nested lists/maps as opposed to only `[]any` and `map[string]any`

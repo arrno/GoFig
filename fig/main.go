@@ -31,7 +31,7 @@ func main() {
 		"foo": "bar",
 	}
 	fig.Stage().Set("fig/fog", d)
-	fig.ManageStagedMigration(false)
+	fig.ManageStagedMigration()
 
 	// set updated state
 	fig.mig.name = "updated"
@@ -42,10 +42,10 @@ func main() {
 		"c": fig.DeleteField(),
 	}
 	fig.Stage().Update("fig/fog", dd)
-	fig.ManageStagedMigration(false)
+	fig.ManageStagedMigration()
 
 	// rollback updated state
 	fig.mig.name = "updated_rollback"
-	fig.ManageStagedMigration(true)
+	fig.ManageStagedMigration()
 
 }

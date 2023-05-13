@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -39,17 +40,29 @@ func (c *Controller) Stage() *Stager {
 	return c.mig.Stage()
 }
 
+// LoadFromFile attempts to load a pre staged migration from a file if it exists
+// in the storagePath folder
+func (c *Controller) LoadFromFile() error {
+	if err := c.mig.LoadMigration(); err != nil {
+		return errors.New("LoadError: " + err.Error())
+	}
+	return nil
+}
+
+// SaveToFile attempts to save a migration staged in runtime memory to
+// a file in the storagePath folder
+func (c *Controller) SaveToFile() error {
+	if err := c.mig.StoreMigration(); err != nil {
+		return errors.New("StoreError: " + err.Error())
+	}
+	return nil
+}
+
 // ManageStagedMigration runs the CLI script for handling a Migration that has been staged.
 // If the migration is to be loaded from a migration file in storage, set load to true.
-func (c *Controller) ManageStagedMigration(load bool) {
+func (c *Controller) ManageStagedMigration() {
 
 	ClearTerm()
-	if load {
-		if err := c.mig.LoadMigration(); err != nil {
-			fmt.Println("LoadError: " + err.Error())
-			return
-		}
-	}
 	if err := c.prepAndPresent(false); err != nil {
 		fmt.Println("PrepError: " + err.Error())
 		return
