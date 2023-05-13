@@ -162,6 +162,12 @@ func (c *Change) inferCommand() error {
 
 	// {}->{...}/{...}->{...} are set... {...}->{} is delete
 	if len(c.after) > 0 {
+		mafter, _ := json.Marshal(c.after)
+		mpatch, _ := json.Marshal(c.patch)
+		if string(mafter) != c.instruction && string(mafter) != string(mpatch) {
+			c.command = MigratorUpdate
+			return nil
+		}
 		c.command = MigratorSet
 	} else {
 		c.command = MigratorDelete
@@ -197,9 +203,10 @@ func (c *Change) inferRollback() error {
 // This may be needed for rollbacks where we only have before and instructions.
 func (c *Change) inferPatch() {
 
-	if len(c.patch) == 0 &&
-		(c.command == MigratorAdd || c.command == MigratorSet || c.command == MigratorUpdate) {
+	if len(c.patch) == 0 && (c.command == MigratorAdd || c.command == MigratorSet) {
 		c.patch = c.after
+	} else if len(c.patch) == 0 && len(c.instruction) > 0 {
+		json.Unmarshal([]byte(c.instruction), &c.patch)
 	}
 
 }

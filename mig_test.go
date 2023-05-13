@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -46,7 +47,7 @@ func TestChange(t *testing.T) {
 	before := map[string]any{
 		"a": "foo",
 		"b": "bar",
-		"c": []int{1, 2, 3, 4},
+		"c": []any{1, 2, 3, 4},
 		"d": false,
 		"e": map[string]any{
 			"f": "foo",
@@ -55,7 +56,7 @@ func TestChange(t *testing.T) {
 	}
 	patch := map[string]any{
 		"a": "far",
-		"c": []int{1, 2, 6},
+		"c": []any{1, 2, 6},
 		"d": true,
 		"e": map[string]any{
 			"f": false,
@@ -64,7 +65,8 @@ func TestChange(t *testing.T) {
 	}
 	after := map[string]any{
 		"a": "far",
-		"c": []int{1, 2, 6},
+		"b": "bar",
+		"c": []any{1, 2, 6},
 		"d": true,
 		"e": map[string]any{
 			"f": false,
@@ -87,13 +89,13 @@ func TestChange(t *testing.T) {
 			instruction: "",
 			command:     MigratorAdd,
 			after:       before,
-			rollback:    "{\"a\":\"null\",\"b\":\"null\",\"c\":null,\"d\":null,\"e\":null",
+			rollback:    "{\"a\":null,\"b\":null,\"c\":null,\"d\":null,\"e\":null}",
 		},
 		"before_patch_update": {
 			before:      before,
 			patch:       patch,
 			instruction: "",
-			command:     MigratorAdd,
+			command:     MigratorUpdate,
 			after:       after,
 			rollback:    "{\"a\":\"foo\",\"c\":[1,2,3,4],\"d\":false,\"e\":{\"f\":\"foo\"},\"h\":null}",
 		},
@@ -111,24 +113,20 @@ func TestChange(t *testing.T) {
 			patch:       patch,
 			instruction: "",
 			after:       patch,
-			rollback:    "{\"a\":\"foo\",\"b\":\"bar\",\"c\":[1,2,3,4],\"d\":false,\"e\":{\"f\":\"foo\",\"g\":\"7.8\"},\"h\":null}",
-		},
-		"before_instruction": {
-			before:      before,
-			command:     MigratorUnknown,
-			patch:       map[string]any{},
-			instruction: "{\"a\":\"far\",\"c\":[1,2,6],\"d\":true,\"e\":{\"f\":\"false\"},\"h\":100}",
-			after:       after,
-			rollback:    "{\"a\":\"foo\",\"c\":[1,2,3,4],\"d\":false,\"e\":{\"f\":\"foo\"},\"h\":null}",
+			rollback:    "{\"a\":\"foo\",\"b\":\"bar\",\"c\":[1,2,3,4],\"d\":false,\"e\":{\"f\":\"foo\",\"g\":7.8},\"h\":null}",
 		},
 	}
+
+	// baseline scenarios
 	for k, v := range payloads {
 		c := NewChange("test/test", payloads[k].before, payloads[k].patch, payloads[k].command, payloads[k].instruction, mf)
 		c.SolveChange()
 		if c.command != v.command {
 			t.Fatalf("Mismatched command on %s", k)
 		}
-		if !reflect.DeepEqual(c.after, v.after) {
+		cafter, _ := json.Marshal(c.after)
+		vafter, _ := json.Marshal(v.after)
+		if string(cafter) != string(vafter) {
 			t.Fatalf("Mismatched after on %s", k)
 		}
 		if !reflect.DeepEqual(c.patch, v.patch) {
@@ -139,5 +137,34 @@ func TestChange(t *testing.T) {
 		}
 
 	}
+
+	// rollback scenarios
+	// Update
+	beforeInstruction := testChange{
+		before:      before,
+		command:     MigratorUnknown,
+		patch:       map[string]any{},
+		instruction: "{\"a\":\"far\",\"c\":[1,2,6],\"d\":true,\"e\":{\"f\":false},\"h\":1000}",
+		after:       after,
+		rollback:    "{\"a\":\"foo\",\"c\":[1,2,3,4],\"d\":false,\"e\":{\"f\":\"foo\"},\"h\":null}",
+	}
+	c := NewChange("test/test", beforeInstruction.before, beforeInstruction.patch, beforeInstruction.command, beforeInstruction.instruction, mf)
+	c.SolveChange()
+	if c.command != MigratorUpdate {
+		t.Log(c.command, MigratorSet)
+		t.Fatalf("Mismatched command on before_instruction")
+	}
+	cafter, _ := json.Marshal(c.after)
+	vafter, _ := json.Marshal(beforeInstruction.after)
+	if string(cafter) != string(vafter) {
+		t.Fatalf("Mismatched after on before_instruction")
+	}
+	if !reflect.DeepEqual(c.patch, beforeInstruction.patch) {
+		t.Fatalf("Mismatched patch on before_instruction")
+	}
+	if c.rollback != beforeInstruction.rollback {
+		t.Fatalf("Mismatched rollback on before_instruction")
+	}
+	// rollback add/delete/set
 
 }
