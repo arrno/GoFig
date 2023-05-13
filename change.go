@@ -1,4 +1,4 @@
-package main
+package gofig
 
 import (
 	"encoding/json"
@@ -31,7 +31,7 @@ type Change struct {
 	prettyDiff string
 	rollback   map[string]any
 	errState   error
-	database   Firestore
+	database   figFirestore
 	cache      map[string]map[string]any
 }
 
@@ -40,7 +40,7 @@ func NewChange(docPath string,
 	before map[string]any,
 	patch map[string]any,
 	command Command,
-	database Firestore) *Change {
+	database figFirestore) *Change {
 	c := Change{
 		docPath:  docPath,
 		before:   before,
@@ -129,14 +129,14 @@ func (c *Change) inferAfter() error {
 	if err != nil {
 		return err
 	}
-	after, err := ApplyDiffPatch(bm, pm)
+	after, err := applyDiffPatch(bm, pm)
 	if err != nil {
 		return err
 	}
 
 	var ua map[string]any
 	json.Unmarshal(after, &ua)
-	c.after = DeSerializeData(ua, c.database).(map[string]any)
+	c.after = deSerializeData(ua, c.database).(map[string]any)
 	return nil
 
 }
@@ -182,7 +182,7 @@ func (c *Change) inferRollback() error {
 	if err != nil {
 		return err
 	}
-	patch, err := GetDiffPatch(a, b)
+	patch, err := getDiffPatch(a, b)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (c *Change) inferPrettyDiff() error {
 	}
 
 	sBefore, sAfter := c.beforeAfterCache()
-	s, err := PrettyDiff(sBefore, sAfter)
+	s, err := prettyDiff(sBefore, sAfter)
 	if err != nil {
 		return err
 	}
@@ -240,24 +240,27 @@ func (c *Change) pushChange(transformer func(map[string]any) map[string]any) err
 	data := transformer(c.patch)
 	switch c.command {
 	case MigratorUpdate:
-		return c.database.UpdateDoc(c.docPath, data)
+		return c.database.updateDoc(c.docPath, data)
 	case MigratorSet:
-		return c.database.SetDoc(c.docPath, data)
+		return c.database.setDoc(c.docPath, data)
 	case MigratorAdd:
-		return c.database.SetDoc(c.docPath, data)
+		return c.database.setDoc(c.docPath, data)
 	default:
-		return c.database.DeleteDoc(c.docPath)
+		return c.database.deleteDoc(c.docPath)
 	}
 }
 
+// fetchCache returns value from cache
 func (c *Change) fetchCache(key string, data map[string]any) map[string]any {
 	sVar, ok := c.cache[key]
 	if !ok {
-		sVar = SerializeData(data, c.database).(map[string]any)
+		sVar = serializeData(data, c.database).(map[string]any)
 		c.cache[key] = sVar
 	}
 	return sVar
 }
+
+// beforeAfterCache returns before and after values from cache
 func (c *Change) beforeAfterCache() (map[string]any, map[string]any) {
 	// var sBefore, sAfter string
 	return c.fetchCache("serialBefore", c.before), c.fetchCache("serialAfter", c.after)

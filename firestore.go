@@ -1,4 +1,4 @@
-package main
+package gofig
 
 import (
 	"context"
@@ -12,27 +12,27 @@ import (
 	"google.golang.org/api/option"
 )
 
-// Firestore is an interface that expresses what a NoSQL database dependency should do.
-type Firestore interface {
-	GetDocData(docPath string) (map[string]any, error)
-	GenDocPath(colPath string) (string, error)
-	UpdateDoc(docPath string, data map[string]any) error
-	SetDoc(docPath string, data map[string]any) error
-	DeleteDoc(docPath string) error
-	DeleteField() any
-	RefField(docPath string) any
-	Name() string
+// figFirestore is an interface that expresses what a NoSQL database dependency should do.
+type figFirestore interface {
+	getDocData(docPath string) (map[string]any, error)
+	genDocPath(colPath string) (string, error)
+	updateDoc(docPath string, data map[string]any) error
+	setDoc(docPath string, data map[string]any) error
+	deleteDoc(docPath string) error
+	deleteField() any
+	refField(docPath string) any
+	name() string
 }
 
-// Firefriend is our implementation/wrapper for google's firestore client.
-type Firefriend struct {
+// fireFriend is the gofig implementation/wrapper for google's firestore client.
+type fireFriend struct {
 	client *firestore.Client
 	ctx    context.Context
 	config map[string]string
 }
 
-// NewFirestore is a Firefriend factory
-func NewFirestore(keyPath string) (*Firefriend, func(), error) {
+// newFirestore is a fireFriend factory
+func newFirestore(keyPath string) (*fireFriend, func(), error) {
 
 	ctx := context.Background()
 
@@ -51,7 +51,7 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 		"idSize":  "20",
 	}
 
-	f := Firefriend{
+	f := fireFriend{
 		client,
 		ctx,
 		config,
@@ -60,15 +60,15 @@ func NewFirestore(keyPath string) (*Firefriend, func(), error) {
 
 }
 
-// Name returns a hash for the underlying firestore database name. This may
+// name returns a hash for the underlying firestore database name. This may
 // be useful for guarding against pushing changes to the wrong database.
-func (f Firefriend) Name() string {
+func (f fireFriend) name() string {
 	s := strings.Split(f.client.Doc("__init__/__init__").Path, "__init__/__init__")[0]
 	return strings.Split(s, "/databases/(default)/documents/")[0]
 }
 
 // docRef converts a string path to a firestore document reference.
-func (f Firefriend) docRef(path string) (*firestore.DocumentRef, error) {
+func (f fireFriend) docRef(path string) (*firestore.DocumentRef, error) {
 
 	ref := f.client.Doc(path)
 
@@ -81,7 +81,7 @@ func (f Firefriend) docRef(path string) (*firestore.DocumentRef, error) {
 }
 
 // doc converts a string path to a firestore document snapshot.
-func (f Firefriend) doc(path string) (*firestore.DocumentSnapshot, error) {
+func (f fireFriend) doc(path string) (*firestore.DocumentSnapshot, error) {
 
 	ref, err := f.docRef(path)
 
@@ -95,7 +95,7 @@ func (f Firefriend) doc(path string) (*firestore.DocumentSnapshot, error) {
 }
 
 // getDocData attempts to read the specified document. If the document exists, it returns the underlying data.
-func (f Firefriend) GetDocData(docPath string) (map[string]any, error) {
+func (f fireFriend) getDocData(docPath string) (map[string]any, error) {
 
 	snap, err := f.doc(docPath)
 	if !snap.Exists() {
@@ -109,8 +109,8 @@ func (f Firefriend) GetDocData(docPath string) (map[string]any, error) {
 	return snap.Data(), nil
 }
 
-// GenDocPath is used to generate new unique document path given a collection path.
-func (f Firefriend) GenDocPath(colPath string) (string, error) {
+// genDocPath is used to generate new unique document path given a collection path.
+func (f fireFriend) genDocPath(colPath string) (string, error) {
 
 	colRef := f.client.Collection(colPath)
 	if colRef == nil {
@@ -129,8 +129,8 @@ func (f Firefriend) GenDocPath(colPath string) (string, error) {
 	return colPath + "/" + id, nil
 }
 
-// UpdateDoc pushes the data to the document at the given docPath. The changes are merged.
-func (f Firefriend) UpdateDoc(docPath string, data map[string]any) error {
+// updateDoc pushes the data to the document at the given docPath. The changes are merged.
+func (f fireFriend) updateDoc(docPath string, data map[string]any) error {
 
 	ref, err := f.docRef(docPath)
 
@@ -141,8 +141,8 @@ func (f Firefriend) UpdateDoc(docPath string, data map[string]any) error {
 	return err
 }
 
-// SetDoc pushes the data to the document at the given docPath. The document is overwritten.
-func (f Firefriend) SetDoc(docPath string, data map[string]any) error {
+// setDoc pushes the data to the document at the given docPath. The document is overwritten.
+func (f fireFriend) setDoc(docPath string, data map[string]any) error {
 	ref, err := f.docRef(docPath)
 
 	if err == nil {
@@ -152,8 +152,8 @@ func (f Firefriend) SetDoc(docPath string, data map[string]any) error {
 	return err
 }
 
-// DeleteDoc removed the given document from the database.
-func (f Firefriend) DeleteDoc(docPath string) error {
+// deleteDoc removed the given document from the database.
+func (f fireFriend) deleteDoc(docPath string) error {
 	ref, err := f.docRef(docPath)
 
 	if err == nil {
@@ -163,16 +163,11 @@ func (f Firefriend) DeleteDoc(docPath string) error {
 	return err
 }
 
-// DeleteField returns the firestore Delete value which can be set on a nested
-// data field within a Set/Update operation. The field will be removed when
-// UpdateDoc or SetDoc is called.
-func (f Firefriend) DeleteField() any {
+func (f fireFriend) deleteField() any {
 	return firestore.Delete
 }
 
-// RefField is guaranteed to return something that will be properly
-// serialized/deserialized and stored as a firestore document reference
-func (f Firefriend) RefField(docPath string) any {
+func (f fireFriend) refField(docPath string) any {
 	ref, _ := f.docRef(docPath)
 	return ref
 }

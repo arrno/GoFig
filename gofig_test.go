@@ -1,4 +1,4 @@
-package main
+package gofig
 
 import (
 	"encoding/json"
@@ -10,28 +10,28 @@ import (
 
 type MockFirestore struct{}
 
-func (f MockFirestore) GetDocData(docPath string) (map[string]any, error) {
+func (f MockFirestore) getDocData(docPath string) (map[string]any, error) {
 	return map[string]any{}, nil
 }
-func (f MockFirestore) GenDocPath(colPath string) (string, error) {
+func (f MockFirestore) genDocPath(colPath string) (string, error) {
 	return "", nil
 }
-func (f MockFirestore) UpdateDoc(docPath string, data map[string]any) error {
+func (f MockFirestore) updateDoc(docPath string, data map[string]any) error {
 	return nil
 }
-func (f MockFirestore) SetDoc(docPath string, data map[string]any) error {
+func (f MockFirestore) setDoc(docPath string, data map[string]any) error {
 	return nil
 }
-func (f MockFirestore) DeleteDoc(docPath string) error {
+func (f MockFirestore) deleteDoc(docPath string) error {
 	return nil
 }
-func (f MockFirestore) DeleteField() any {
+func (f MockFirestore) deleteField() any {
 	return nil
 }
-func (f MockFirestore) RefField(docPath string) any {
+func (f MockFirestore) refField(docPath string) any {
 	return nil
 }
-func (f MockFirestore) Name() string {
+func (f MockFirestore) name() string {
 	return ""
 }
 

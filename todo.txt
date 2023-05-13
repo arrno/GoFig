@@ -1,6 +1,0 @@
-# Todo
-allow for specific type declarations in nested lists/maps
-    https://stackoverflow.com/questions/24777603/create-slice-of-unknown-type
----
-storagePath as remote collection...
-javascript SDK ->

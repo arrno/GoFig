@@ -1,4 +1,4 @@
-package main
+package gofig
 
 import (
 	"encoding/json"
@@ -49,7 +49,7 @@ func clrTheme() *colorTheme {
 }
 
 // PrettyDiff returns the pretty formatted difference between a before and after map.
-func PrettyDiff(b map[string]any, a map[string]any) (string, error) {
+func prettyDiff(b map[string]any, a map[string]any) (string, error) {
 
 	bm, err := json.Marshal(b)
 	if err != nil {
@@ -80,19 +80,19 @@ func PrettyDiff(b map[string]any, a map[string]any) (string, error) {
 }
 
 // GetDiffPatch produces the json patch instructions needed to transform the original to the target.
-func GetDiffPatch(original []byte, target []byte) ([]byte, error) {
+func getDiffPatch(original []byte, target []byte) ([]byte, error) {
 	return jsonpatch.CreateMergePatch(original, target)
 }
 
 // ApplyDiffPatch applies the json diff patch to the original and returns the result.
-func ApplyDiffPatch(original []byte, patch []byte) ([]byte, error) {
+func applyDiffPatch(original []byte, patch []byte) ([]byte, error) {
 	return jsonpatch.MergePatch(original, patch)
 }
 
 // SerializeData converts timestamps, docrefs, and other complex objects into marked strings.
-func SerializeData(data any, f Firestore) any {
+func serializeData(data any, f figFirestore) any {
 
-	if reflect.DeepEqual(data, f.DeleteField()) {
+	if reflect.DeepEqual(data, f.deleteField()) {
 		return "__delete__<delete>__delete__"
 	}
 
@@ -102,14 +102,14 @@ func SerializeData(data any, f Firestore) any {
 	case reflect.Map:
 		newData := map[string]any{}
 		for k, v := range data.(map[string]any) {
-			newData[k] = SerializeData(v, f)
+			newData[k] = serializeData(v, f)
 		}
 		return newData
 
 	case reflect.Slice:
 		newData := []any{}
 		for _, d := range data.([]any) {
-			newData = append(newData, SerializeData(d, f))
+			newData = append(newData, serializeData(d, f))
 		}
 		return newData
 
@@ -132,21 +132,21 @@ func SerializeData(data any, f Firestore) any {
 }
 
 // DeSerializeData converts marked strings into timestamps, docrefs, and other complex objects.
-func DeSerializeData(data any, f Firestore) any {
+func deSerializeData(data any, f figFirestore) any {
 
 	switch k := reflect.ValueOf(data).Kind(); k {
 
 	case reflect.Map:
 		newData := map[string]any{}
 		for k, v := range data.(map[string]any) {
-			newData[k] = DeSerializeData(v, f)
+			newData[k] = deSerializeData(v, f)
 		}
 		return newData
 
 	case reflect.Slice:
 		newData := []any{}
 		for _, d := range data.([]any) {
-			newData = append(newData, DeSerializeData(d, f))
+			newData = append(newData, deSerializeData(d, f))
 		}
 		return newData
 
@@ -157,11 +157,11 @@ func DeSerializeData(data any, f Firestore) any {
 
 		} else if strings.HasPrefix(data.(string), "__docref__") {
 			path := strings.Replace(data.(string), "__docref__", "", -1)
-			ref := f.RefField(path)
+			ref := f.refField(path)
 			return ref
 
 		} else if strings.HasPrefix(data.(string), "__delete__") {
-			return f.DeleteField()
+			return f.deleteField()
 
 		}
 	}
@@ -170,7 +170,7 @@ func DeSerializeData(data any, f Firestore) any {
 }
 
 // StoreJson saves data as json to disc.
-func StoreJson(data any, storagePath string, fileName string) error {
+func storeJson(data any, storagePath string, fileName string) error {
 	js, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func StoreJson(data any, storagePath string, fileName string) error {
 }
 
 // LoadJson reads json from disc and hydrates the data into the provided target.
-func LoadJson[T any](fullPath string, target *T) error {
+func loadJson[T any](fullPath string, target *T) error {
 	content, err := ioutil.ReadFile(fullPath + ".json")
 	if err != nil {
 		return err
@@ -194,7 +194,7 @@ func LoadJson[T any](fullPath string, target *T) error {
 
 // Transform returns new data where instances of before are replaced with after. If after is nil, key is dropped.
 // This function is recursive for slices and maps but not for nested structs.
-func Transform(data any, before any, after any) any {
+func transform(data any, before any, after any) any {
 	switch k := reflect.ValueOf(data).Kind(); k {
 	case reflect.Map:
 		newData := map[any]any{}
@@ -202,13 +202,13 @@ func Transform(data any, before any, after any) any {
 			if reflect.DeepEqual(before, v) && reflect.DeepEqual(after, nil) {
 				continue
 			}
-			newData[k] = Transform(v, before, after)
+			newData[k] = transform(v, before, after)
 		}
 		return newData
 	case reflect.Slice:
 		newData := []any{}
 		for _, d := range data.([]any) {
-			newData = append(newData, Transform(d, before, after))
+			newData = append(newData, transform(d, before, after))
 		}
 		return newData
 	default:
@@ -219,7 +219,7 @@ func Transform(data any, before any, after any) any {
 	return data
 }
 
-func MaxNum[T int | float32 | float64](a T, b T) T {
+func maxNum[T int | float32 | float64](a T, b T) T {
 	if a > b {
 		return a
 	}
@@ -240,7 +240,7 @@ var clearMap map[string]func() = map[string]func(){
 }
 
 // clearTerm clears the terminal.
-func ClearTerm() {
+func clearTerm() {
 	if runtime.GOOS == "windows" {
 		clearMap["windows"]()
 		return
@@ -249,7 +249,7 @@ func ClearTerm() {
 }
 
 // longestLine returns the length and text of the longest line given an input string.
-func LongestLine(s string) (int, string) {
+func longestLine(s string) (int, string) {
 	subString := s
 	maxLen := 0
 	for _, line := range strings.Split(s, "\n") {

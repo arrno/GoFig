@@ -1,4 +1,4 @@
-package main
+package gofig
 
 import (
 	"errors"
@@ -29,18 +29,31 @@ type Migration struct {
 
 // <---------------------- Migrator ------------------------------------>
 
-// Migrator is the API for performing migration tasks within a job.
+// FigMigrator described what a GoFig Migrator implementeation should do.
+type FigMigrator interface {
+	SetDeleteFlag(flag string)
+	PrepMigration() error
+	PresentMigration()
+	RunMigration()
+	LoadMigration() error
+	StoreMigration() error
+	deleteField() any
+	refField(docPath string) any
+	Stage() FigStager
+}
+
+// Migrator is the API for performing migration tasks within a job it implements FigMigrator.
 type Migrator struct {
 	name        string
 	storagePath string
 	deleteFlag  string
-	database    Firestore
+	database    figFirestore
 	changes     []*Change
 	hasRun      bool
 }
 
 // NewMigrator is a Migrator factory.
-func NewMigrator(storagePath string, database Firestore, name string) *Migrator {
+func NewMigrator(storagePath string, database figFirestore, name string) FigMigrator {
 	m := Migrator{
 		name:        name,
 		storagePath: storagePath,
@@ -54,7 +67,7 @@ func NewMigrator(storagePath string, database Firestore, name string) *Migrator 
 // can later be loaded and run by the Migrator to rollback/inverse the initial state.
 func (m *Migrator) buildRollback() (*Migration, error) {
 	rollback := Migration{
-		DatabaseName: m.database.Name(),
+		DatabaseName: m.database.name(),
 		Timestamp:    time.Now(),
 		Executed:     false,
 	}
@@ -85,7 +98,7 @@ func (m *Migrator) buildRollback() (*Migration, error) {
 		}
 		u := WorkUnit{
 			DocPath: c.docPath,
-			Patch:   SerializeData(c.rollback, m.database).(map[string]any),
+			Patch:   serializeData(c.rollback, m.database).(map[string]any),
 			Command: command,
 		}
 		rollback.ChangeUnits = append(rollback.ChangeUnits, u)
@@ -99,7 +112,7 @@ func (m *Migrator) storeRollback() error {
 	if err != nil {
 		return err
 	}
-	return StoreJson(rollback, m.storagePath, m.name+"_rollback")
+	return storeJson(rollback, m.storagePath, m.name+"_rollback")
 }
 
 // validateWorkset returns a new error if the staged Changes are not valid
@@ -146,22 +159,22 @@ func (m *Migrator) PrepMigration() error {
 // PresentMigration prints all the staged changes to stdout for review.
 func (m *Migrator) PresentMigration() {
 
-	lngth := MaxNum(len(m.name), len(m.database.Name()))
-	lngth = MaxNum(lngth, len(m.storagePath)) + 26
+	lngth := maxNum(len(m.name), len(m.database.name()))
+	lngth = maxNum(lngth, len(m.storagePath)) + 26
 	m.printSeparator(lngth)
 
 	fmt.Printf(
 		"Migration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
 		"  "+m.name,
-		"  "+m.database.Name(),
+		"  "+m.database.name(),
 		"  "+m.storagePath,
 		"  "+strconv.FormatBool(m.hasRun),
 	)
 	for _, c := range m.changes {
 		lngth = len(c.docPath) + len(c.commandString()) + 19
 		header, cOut := c.Present()
-		lineLength, _ := LongestLine(cOut)
-		maxLength := MaxNum(lngth, lineLength-12)
+		lineLength, _ := longestLine(cOut)
+		maxLength := maxNum(lngth, lineLength-12)
 		m.printSeparator(maxLength)
 		headerPad := strings.Repeat(" ", maxLength-utf8.RuneCountInString(header[0]+header[1])+14)
 		fmt.Print(strings.Join(header, headerPad))
@@ -204,14 +217,14 @@ func (m *Migrator) RunMigration() {
 // This is the preferred workflow for loading a rollback.
 func (m *Migrator) LoadMigration() error {
 	var mig Migration
-	err := LoadJson(m.storagePath+"/"+m.name, &mig)
+	err := loadJson(m.storagePath+"/"+m.name, &mig)
 	if err != nil {
 		return err
 	}
 	m.hasRun = mig.Executed
 	m.changes = []*Change{}
 	for _, unit := range mig.ChangeUnits {
-		patch := DeSerializeData(unit.Patch, m.database).(map[string]any)
+		patch := deSerializeData(unit.Patch, m.database).(map[string]any)
 		switch unit.Command {
 		case MigratorAdd:
 			err = m.Stage().Set(unit.DocPath, patch)
@@ -239,7 +252,7 @@ func (m *Migrator) LoadMigration() error {
 func (m *Migrator) StoreMigration() error {
 
 	migration := Migration{
-		DatabaseName: m.database.Name(),
+		DatabaseName: m.database.name(),
 		Timestamp:    time.Now(),
 		Executed:     m.hasRun,
 	}
@@ -249,14 +262,35 @@ func (m *Migrator) StoreMigration() error {
 		}
 		u := WorkUnit{
 			DocPath: c.docPath,
-			Patch:   SerializeData(c.patch, m.database).(map[string]any),
+			Patch:   serializeData(c.patch, m.database).(map[string]any),
 			Command: c.command,
 		}
 		migration.ChangeUnits = append(migration.ChangeUnits, u)
 	}
 
-	return StoreJson(migration, m.storagePath, m.name)
+	return storeJson(migration, m.storagePath, m.name)
 
+}
+
+// deleteField returns the firestore Delete value which can be set on a nested
+// data field within a Set/Update operation. The field will be removed when
+// updateDoc or setDoc is called.
+func (m *Migrator) deleteField() any {
+	return m.database.deleteField()
+}
+
+// refField is guaranteed to return something that will be properly
+// serialized/deserialized and stored as a firestore document reference
+func (m *Migrator) refField(docPath string) any {
+	return m.database.refField(docPath)
+}
+
+type FigStager interface {
+	Update(docPath string, data map[string]any) error
+	Set(docPath string, data map[string]any) error
+	Add(colPath string, data map[string]any) error
+	Delete(docPath string) error
+	Unknown(docPath string, data map[string]any) error
 }
 
 // Stager is an abstraction on top of Migrator which is used as an API
@@ -267,7 +301,7 @@ type Stager struct {
 
 // Update stages a new Update change on the Migrator.
 func (s Stager) Update(docPath string, data map[string]any) error {
-	before, err := s.migrator.database.GetDocData(docPath)
+	before, err := s.migrator.database.getDocData(docPath)
 	if err != nil {
 		return err
 	}
@@ -278,7 +312,7 @@ func (s Stager) Update(docPath string, data map[string]any) error {
 
 // Set stages a new Set change on the Migrator.
 func (s Stager) Set(docPath string, data map[string]any) error {
-	before, err := s.migrator.database.GetDocData(docPath)
+	before, err := s.migrator.database.getDocData(docPath)
 	if err != nil {
 		return err
 	}
@@ -289,7 +323,7 @@ func (s Stager) Set(docPath string, data map[string]any) error {
 
 // Add stages a new Add change on the Migrator.
 func (s Stager) Add(colPath string, data map[string]any) error {
-	path, err := s.migrator.database.GenDocPath(colPath)
+	path, err := s.migrator.database.genDocPath(colPath)
 	if err != nil {
 		return err
 	}
@@ -300,7 +334,7 @@ func (s Stager) Add(colPath string, data map[string]any) error {
 
 // Delete stages a new Delete change on the Migrator.
 func (s Stager) Delete(docPath string) error {
-	before, err := s.migrator.database.GetDocData(docPath)
+	before, err := s.migrator.database.getDocData(docPath)
 	if err != nil {
 		return err
 	}
@@ -311,7 +345,7 @@ func (s Stager) Delete(docPath string) error {
 
 // Unknown stages a new change on the Migrator of an Unknown command type.
 func (s Stager) Unknown(docPath string, data map[string]any) error {
-	before, err := s.migrator.database.GetDocData(docPath)
+	before, err := s.migrator.database.getDocData(docPath)
 	if err != nil {
 		return err
 	}
@@ -321,7 +355,7 @@ func (s Stager) Unknown(docPath string, data map[string]any) error {
 }
 
 // Stage is a Stager factory
-func (m *Migrator) Stage() *Stager {
+func (m *Migrator) Stage() FigStager {
 	s := Stager{
 		migrator: m,
 	}
