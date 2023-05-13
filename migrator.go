@@ -13,10 +13,9 @@ import (
 // You cannot have multiple work units pointing to the same document in
 // a migration.
 type WorkUnit struct {
-	DocPath     string         `json:"docPath"`
-	Instruction string         `json:"instruction,omitempty"`
-	Patch       map[string]any `json:"patch,omitempty"`
-	Command     Command        `json:"command,omitempty"`
+	DocPath string         `json:"docPath"`
+	Patch   map[string]any `json:"patch,omitempty"`
+	Command Command        `json:"command,omitempty"`
 }
 
 // Migration represents all the instructions needed by the migrator to orchestrate a job.
@@ -85,9 +84,9 @@ func (m *Migrator) buildRollback() (*Migration, error) {
 			command = MigratorUnknown
 		}
 		u := WorkUnit{
-			DocPath:     c.docPath,
-			Instruction: c.rollback,
-			Command:     command,
+			DocPath: c.docPath,
+			Patch:   SerializeData(c.rollback, m.database).(map[string]any),
+			Command: command,
 		}
 		rollback.ChangeUnits = append(rollback.ChangeUnits, u)
 	}
@@ -130,29 +129,6 @@ const (
 	DeSerialize
 	Exclude
 )
-
-// toggleDeleteFlag either serializes or deserializes the deleteFlag values on all staged Change structs.
-// The original is not changed rather, a copy is returned.
-func (m *Migrator) toggleDeleteFlag(data map[string]any, mode TransformMode) map[string]any {
-
-	var before any
-	var after any
-
-	switch mode {
-	case Serialize:
-		before = m.database.DeleteField()
-		after = m.deleteFlag
-	case DeSerialize:
-		before = m.deleteFlag
-		after = m.database.DeleteField()
-	case Exclude:
-		before = m.deleteFlag
-		after = nil
-	}
-
-	return Transform(data, before, after).(map[string]any)
-
-}
 
 // PrepMigration is run after all changes are staged. This function validates and solves all of the changes.
 // No changes are pushed to the database.
@@ -238,19 +214,19 @@ func (m *Migrator) LoadMigration() error {
 		patch := DeSerializeData(unit.Patch, m.database).(map[string]any)
 		switch unit.Command {
 		case MigratorAdd:
-			err = m.Stage().Set(unit.DocPath, patch, unit.Instruction)
+			err = m.Stage().Set(unit.DocPath, patch)
 			break
 		case MigratorSet:
-			err = m.Stage().Set(unit.DocPath, patch, unit.Instruction)
+			err = m.Stage().Set(unit.DocPath, patch)
 			break
 		case MigratorUpdate:
-			err = m.Stage().Update(unit.DocPath, patch, unit.Instruction)
+			err = m.Stage().Update(unit.DocPath, patch)
 			break
 		case MigratorDelete:
 			err = m.Stage().Delete(unit.DocPath)
 			break
 		default:
-			err = m.Stage().Unknown(unit.DocPath, patch, unit.Instruction)
+			err = m.Stage().Unknown(unit.DocPath, patch)
 		}
 		if err != nil {
 			return err
@@ -273,7 +249,7 @@ func (m *Migrator) StoreMigration() error {
 		}
 		u := WorkUnit{
 			DocPath: c.docPath,
-			Patch:   c.patch,
+			Patch:   SerializeData(c.patch, m.database).(map[string]any),
 			Command: c.command,
 		}
 		migration.ChangeUnits = append(migration.ChangeUnits, u)
@@ -290,34 +266,34 @@ type Stager struct {
 }
 
 // Update stages a new Update change on the Migrator.
-func (s Stager) Update(docPath string, data map[string]any, instruction string) error {
+func (s Stager) Update(docPath string, data map[string]any) error {
 	before, err := s.migrator.database.GetDocData(docPath)
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, data, MigratorUpdate, instruction, s.migrator.database)
+	change := NewChange(docPath, before, data, MigratorUpdate, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
 
 // Set stages a new Set change on the Migrator.
-func (s Stager) Set(docPath string, data map[string]any, instruction string) error {
+func (s Stager) Set(docPath string, data map[string]any) error {
 	before, err := s.migrator.database.GetDocData(docPath)
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, data, MigratorSet, instruction, s.migrator.database)
+	change := NewChange(docPath, before, data, MigratorSet, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
 
 // Add stages a new Add change on the Migrator.
-func (s Stager) Add(colPath string, data map[string]any, instruction string) error {
+func (s Stager) Add(colPath string, data map[string]any) error {
 	path, err := s.migrator.database.GenDocPath(colPath)
 	if err != nil {
 		return err
 	}
-	change := NewChange(path, map[string]any{}, data, MigratorSet, instruction, s.migrator.database)
+	change := NewChange(path, map[string]any{}, data, MigratorSet, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
@@ -328,18 +304,18 @@ func (s Stager) Delete(docPath string) error {
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, map[string]any{}, MigratorDelete, "", s.migrator.database)
+	change := NewChange(docPath, before, map[string]any{}, MigratorDelete, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
 
 // Unknown stages a new change on the Migrator of an Unknown command type.
-func (s Stager) Unknown(docPath string, data map[string]any, instruction string) error {
+func (s Stager) Unknown(docPath string, data map[string]any) error {
 	before, err := s.migrator.database.GetDocData(docPath)
 	if err != nil {
 		return err
 	}
-	change := NewChange(docPath, before, data, MigratorUnknown, instruction, s.migrator.database)
+	change := NewChange(docPath, before, data, MigratorUnknown, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }

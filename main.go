@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 func main() {
@@ -21,40 +22,30 @@ func main() {
 
 	defer fig.Close()
 
-	patch := map[string]any{
-		"a": "far",
-		"c": []any{1, 2, 6},
-		"d": true,
-		"e": map[string]any{
-			"f": false,
-		},
-		"h": 1000,
+	// set initial state
+	d := map[string]any{
+		"a":   time.Now(),
+		"b":   time.Now(),
+		"c":   fig.RefField("fig/DLMwCPG41s2p_dcQrYA3"),
+		"d":   fig.RefField("fig/test"),
+		"foo": "bar",
 	}
-
-	fig.Stage().Update("fig/test", patch, "")
-	// // set initial state
-	// d := map[string]any{
-	// 	"a": time.Now(),
-	// 	"b": time.Now(),
-	// 	"c": fig.RefField("fig/DLMwCPG41s2p_dcQrYA3"),
-	// 	"d": fig.RefField("fig/test"),
-	// }
-	// fig.Stage().Set("fig/fog", d, "")
+	fig.Stage().Set("fig/fog", d)
 	fig.ManageStagedMigration(false)
 
-	// // set updated state
-	// fig.mig.name = "updated"
-	// fig.mig.changes = []*Change{}
-	// dd := map[string]any{
-	// 	"a": time.Now(),
-	// 	"d": "fig/test",
-	// 	"c": fig.DeleteField(),
-	// }
-	// fig.Stage().Update("fig/fog", dd, "")
-	// fig.ManageStagedMigration(false)
+	// set updated state
+	fig.mig.name = "updated"
+	fig.mig.changes = []*Change{}
+	dd := map[string]any{
+		"a": time.Now(),
+		"d": "fig/test",
+		"c": fig.DeleteField(),
+	}
+	fig.Stage().Update("fig/fog", dd)
+	fig.ManageStagedMigration(false)
 
-	// // rollback updated state
-	// fig.mig.name = "updated_rollback"
-	// fig.ManageStagedMigration(true)
+	// rollback updated state
+	fig.mig.name = "updated_rollback"
+	fig.ManageStagedMigration(true)
 
 }

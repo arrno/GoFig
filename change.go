@@ -23,17 +23,16 @@ const (
 // Change represents one change on one document. A change must contain enough data points to be solved.
 // For example, given a before and a patch, we can solve for the after value.
 type Change struct {
-	docPath     string
-	before      map[string]any
-	patch       map[string]any
-	after       map[string]any
-	instruction string
-	command     Command
-	prettyDiff  string
-	rollback    string
-	errState    error
-	database    Firestore
-	cache       map[string]map[string]any
+	docPath    string
+	before     map[string]any
+	patch      map[string]any
+	after      map[string]any
+	command    Command
+	prettyDiff string
+	rollback   map[string]any
+	errState   error
+	database   Firestore
+	cache      map[string]map[string]any
 }
 
 // NewChange is a Change factory.
@@ -41,17 +40,15 @@ func NewChange(docPath string,
 	before map[string]any,
 	patch map[string]any,
 	command Command,
-	instruction string,
 	database Firestore) *Change {
 	c := Change{
-		docPath:     docPath,
-		before:      before,
-		patch:       patch,
-		command:     command,
-		instruction: instruction,
-		database:    database,
-		errState:    errors.New("Change has not yet been solved."),
-		cache:       map[string]map[string]any{},
+		docPath:  docPath,
+		before:   before,
+		patch:    patch,
+		command:  command,
+		database: database,
+		errState: errors.New("Change has not yet been solved."),
+		cache:    map[string]map[string]any{},
 	}
 	return &c
 }
@@ -80,7 +77,6 @@ func (c *Change) SolveChange() error {
 		c.errState = err
 		return err
 	}
-	c.inferPatch()
 	return nil
 }
 
@@ -117,8 +113,8 @@ func (c *Change) inferAfter() error {
 		}
 
 	}
-	if c.before == nil || (c.patch == nil && c.instruction == "") {
-		return errors.New("Need before and patch/instruction to infer after.")
+	if c.before == nil || c.patch == nil {
+		return errors.New("Need before and patch to infer after.")
 	}
 
 	sBefore := c.fetchCache("sBefore", c.before)
@@ -129,11 +125,7 @@ func (c *Change) inferAfter() error {
 	}
 
 	var pm []byte
-	if len(c.instruction) > 0 && len(c.patch) == 0 {
-		pm = []byte(c.instruction)
-	} else {
-		pm, err = json.Marshal(sPatch)
-	}
+	pm, err = json.Marshal(sPatch)
 	if err != nil {
 		return err
 	}
@@ -160,11 +152,10 @@ func (c *Change) inferCommand() error {
 		return errors.New("Need after value to infer command.")
 	}
 
-	// {}->{...}/{...}->{...} are set... {...}->{} is delete
 	if len(c.after) > 0 {
 		mafter, _ := json.Marshal(c.after)
 		mpatch, _ := json.Marshal(c.patch)
-		if string(mafter) != c.instruction && string(mafter) != string(mpatch) {
+		if string(mafter) != string(mpatch) {
 			c.command = MigratorUpdate
 			return nil
 		}
@@ -177,7 +168,7 @@ func (c *Change) inferCommand() error {
 }
 
 // inferRollback attempts to solve for the Change's rollback value.
-// The rollback value is in the form of json patch instructions.
+// The rollback value is in the form of json patch
 func (c *Change) inferRollback() error {
 	if c.before == nil || c.after == nil {
 		return errors.New("Need before and after value to infer rollback.")
@@ -191,24 +182,12 @@ func (c *Change) inferRollback() error {
 	if err != nil {
 		return err
 	}
-	r, err := GetDiffPatch(a, b)
+	patch, err := GetDiffPatch(a, b)
 	if err != nil {
 		return err
 	}
-	c.rollback = string(r)
+	json.Unmarshal(patch, &c.rollback)
 	return nil
-}
-
-// inferPatch attempts to solve for the Change's patch value.
-// This may be needed for rollbacks where we only have before and instructions.
-func (c *Change) inferPatch() {
-
-	if len(c.patch) == 0 && (c.command == MigratorAdd || c.command == MigratorSet) {
-		c.patch = c.after
-	} else if len(c.patch) == 0 && len(c.instruction) > 0 {
-		json.Unmarshal([]byte(c.instruction), &c.patch)
-	}
-
 }
 
 // inferPrettyDiff attempts to solve for the Change's prettyDiff value.
