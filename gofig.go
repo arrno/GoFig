@@ -8,6 +8,7 @@ import (
 
 // Fig represents what a GoFig manager should do.
 type Fig interface {
+	Close()
 	Stage() FigStager
 	LoadFromFile() error
 	SaveToFile() error
@@ -20,7 +21,7 @@ type Fig interface {
 type GoFig struct {
 	mig    FigMigrator
 	config Config
-	Close  func()
+	close  func()
 }
 
 // Config is the expected structure for GoFig config
@@ -40,9 +41,14 @@ func New(config Config) (Fig, error) {
 	c := GoFig{
 		config: config,
 		mig:    mig,
-		Close:  close,
+		close:  close,
 	}
 	return &c, nil
+}
+
+// Close should be deferred on initialization to handle any database session cleanup.
+func (c *GoFig) Close() {
+	c.close()
 }
 
 // Stage exposes the Migrator Stager as an API to the end user.
