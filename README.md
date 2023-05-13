@@ -6,25 +6,25 @@ GoFig is a tool for managing NoSQL DB migrations. At this time, GoFig supports F
 
 ## Initialize Migrator
 The migrator is initialized with a few configuration parameters.
-- `keyPath` contains the path location of your firestore admin key.
-- `storagePath` contains a path to any local folder the migrator can use to save or load migration files.
-- `name` is a unique identifier for the migration which will be used when loading or creating migration files.
+- `KeyPath` contains the path location of your firestore admin key.
+- `StoragePath` contains a path to any local folder the migrator can use to save or load migration files.
+- `Name` is a unique identifier for the migration which will be used when loading or creating migration files.
 
 ## Stage a Migration
 Once the migrator is initialized, the contents of the migration must be staged. The migration can be staged one of two ways.
 1. Stage each change into the migrator during runtime using the `stage()` utility.
     - Note available actions are `Add, Update, Set, Delete`
     - To save a staged migration to storage for later use, leverage the `SaveToFile()` utility
-2. If the `name` of the migration corresponds to an existing migration file, use the `LoadFromFile()` utility to load all changes.
+2. If the `Name` of the migration corresponds to an existing migration file, use the `LoadFromFile()` utility to load all changes.
 
 ## Run a Migration
 Use the `ManageStagedMigration()` utility to initiate a responsive CLI migration process. 
 - The process will present the staged changes and allow you to push or cancel. 
-- If a migration is pushed to the database, a new migration and corresponding `_rollback` file is created in the 'storagePath' folder.
+- If a migration is pushed to the database, a new migration and corresponding `_rollback` file is created in the 'StoragePath' folder.
 
 ## Rollback
 Rollbacks are identical to any other migration job in format and protocol. To rollback a migration that has been pushed:
-- Initialize a new migration with the `name` of the original migration appended by "_rollback" (For example "my-migration_rollback").
+- Initialize a new migration with the `Name` of the original migration appended by "_rollback" (For example "my-migration_rollback").
 - When staging the migration, use the `LoadFromFile()` method outlined above under the staging section.
 - Run the migration as you would any other job. The CLI process will be the same.
 - You will recieve a rollback to your rollback if the job is pushed.

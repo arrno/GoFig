@@ -30,8 +30,8 @@ type Config struct {
 	Name        string
 }
 
-// NewGoFig is a GoFig factory. Defer *GoFig.Close() after initialization.
-func NewGoFig(config Config) (Fig, error) {
+// New is a GoFig factory. Defer *GoFig.Close() after initialization.
+func New(config Config) (Fig, error) {
 	ff, close, err := newFirestore(config.KeyPath)
 	if err != nil {
 		return nil, err
