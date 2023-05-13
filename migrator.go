@@ -206,7 +206,6 @@ func (m *Migrator) printSeparator(length int) {
 func (m *Migrator) RunMigration() {
 	for _, c := range m.changes {
 		err := c.pushChange(
-			m.database,
 			func(data map[string]any) map[string]any {
 				return data
 				// TODO

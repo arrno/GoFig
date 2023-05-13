@@ -250,17 +250,17 @@ func (c *Change) Present() ([]string, string) {
 }
 
 // pushChange executes this change unit against the database.
-func (c *Change) pushChange(database Firestore, transformer func(map[string]any) map[string]any) error {
+func (c *Change) pushChange(transformer func(map[string]any) map[string]any) error {
 	data := transformer(c.patch)
 	switch c.command {
 	case MigratorUpdate:
-		return database.UpdateDoc(c.docPath, data)
+		return c.database.UpdateDoc(c.docPath, data)
 	case MigratorSet:
-		return database.SetDoc(c.docPath, data)
+		return c.database.SetDoc(c.docPath, data)
 	case MigratorAdd:
-		return database.SetDoc(c.docPath, data)
+		return c.database.SetDoc(c.docPath, data)
 	default:
-		return database.DeleteDoc(c.docPath)
+		return c.database.DeleteDoc(c.docPath)
 	}
 }
 
