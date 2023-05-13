@@ -1,4 +1,4 @@
-package gofig
+package fig
 
 import (
 	"errors"
@@ -25,18 +25,18 @@ type GoFig struct {
 
 // Config is the expected structure for GoFig config
 type Config struct {
-	keyPath     string
-	storagePath string
-	name        string
+	KeyPath     string
+	StoragePath string
+	Name        string
 }
 
 // NewGoFig is a GoFig factory. Defer *GoFig.Close() after initialization.
 func NewGoFig(config Config) (Fig, error) {
-	ff, close, err := newFirestore(config.keyPath)
+	ff, close, err := newFirestore(config.KeyPath)
 	if err != nil {
 		return nil, err
 	}
-	mig := NewMigrator(config.storagePath, ff, config.name)
+	mig := NewMigrator(config.StoragePath, ff, config.Name)
 	c := GoFig{
 		config: config,
 		mig:    mig,

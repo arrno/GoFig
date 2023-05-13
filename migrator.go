@@ -1,4 +1,4 @@
-package gofig
+package fig
 
 import (
 	"errors"
