@@ -6,39 +6,46 @@ import (
 	"strings"
 )
 
-// Fig represents what a GoFig manager should do.
-type Fig interface {
+// GoFig represents the main Fig API.
+type GoFig interface {
+	// Close should be deferred on initialization to handle any database session cleanup.
 	Close()
+	// Stage exposes the Migrator Stager as an API to the end user.
 	Stage() FigStager
+	// LoadFromFile attempts to load a pre staged migration from a file if it exists.
 	LoadFromFile() error
+	// SaveToFile attempts to save a migration staged in runtime to storage.
 	SaveToFile() error
+	// ManageStagedMigration launches the interactive CLI script.
 	ManageStagedMigration()
+	// DeleteField is a shortcut to the controlled database DeleteField.
 	DeleteField() any
+	// RefField is a shortcut to the controlled database RefField.
 	RefField(docPath string) any
 }
 
-// GoFig is meant to orchestrate Migrator functionality.
-type GoFig struct {
+// Fig is meant to orchestrate Migrator functionality.
+type Fig struct {
 	mig    FigMigrator
 	config Config
 	close  func()
 }
 
-// Config is the expected structure for GoFig config
+// Config is the expected structure for Fig config
 type Config struct {
 	KeyPath     string
 	StoragePath string
 	Name        string
 }
 
-// New is a GoFig factory. Defer *GoFig.Close() after initialization.
-func New(config Config) (Fig, error) {
+// New is a Fig factory. Defer *Fig.Close() after initialization.
+func New(config Config) (*Fig, error) {
 	ff, close, err := newFirestore(config.KeyPath)
 	if err != nil {
 		return nil, err
 	}
 	mig := NewMigrator(config.StoragePath, ff, config.Name)
-	c := GoFig{
+	c := Fig{
 		config: config,
 		mig:    mig,
 		close:  close,
@@ -47,18 +54,18 @@ func New(config Config) (Fig, error) {
 }
 
 // Close should be deferred on initialization to handle any database session cleanup.
-func (c *GoFig) Close() {
+func (c *Fig) Close() {
 	c.close()
 }
 
 // Stage exposes the Migrator Stager as an API to the end user.
-func (c *GoFig) Stage() FigStager {
+func (c *Fig) Stage() FigStager {
 	return c.mig.Stage()
 }
 
 // LoadFromFile attempts to load a pre staged migration from a file if it exists
 // in the storagePath folder
-func (c *GoFig) LoadFromFile() error {
+func (c *Fig) LoadFromFile() error {
 	if err := c.mig.LoadMigration(); err != nil {
 		return errors.New("LoadError: " + err.Error())
 	}
@@ -67,16 +74,15 @@ func (c *GoFig) LoadFromFile() error {
 
 // SaveToFile attempts to save a migration staged in runtime memory to
 // a file in the storagePath folder
-func (c *GoFig) SaveToFile() error {
+func (c *Fig) SaveToFile() error {
 	if err := c.mig.StoreMigration(); err != nil {
 		return errors.New("StoreError: " + err.Error())
 	}
 	return nil
 }
 
-// ManageStagedMigration runs the CLI script for handling a Migration that has been staged.
-// If the migration is to be loaded from a migration file in storage, set load to true.
-func (c *GoFig) ManageStagedMigration() {
+// ManageStagedMigration launches the interactive CLI script.
+func (c *Fig) ManageStagedMigration() {
 
 	clearTerm()
 	if err := c.prepAndPresent(false); err != nil {
@@ -88,7 +94,7 @@ func (c *GoFig) ManageStagedMigration() {
 }
 
 // prepAndPresent is a script to prepare the migration and present it via stdout.
-func (c *GoFig) prepAndPresent(clear bool) error {
+func (c *Fig) prepAndPresent(clear bool) error {
 	if clear {
 		clearTerm()
 	}
@@ -101,7 +107,7 @@ func (c *GoFig) prepAndPresent(clear bool) error {
 
 // promptRun is a script to prompt a user for confirmation. If the user confirms
 // in the affirmative, the migration is run against the database.
-func (c *GoFig) promptRun() {
+func (c *Fig) promptRun() {
 	userConfirm := "N"
 	fmt.Println("Execute these changes? (y/N):")
 	fmt.Scanln(&userConfirm)
@@ -115,12 +121,12 @@ func (c *GoFig) promptRun() {
 	}
 }
 
-// DeleteField is a shortcut to the controlled database DeleteField
-func (c *GoFig) DeleteField() any {
+// DeleteField is a shortcut to the controlled database DeleteField.
+func (c *Fig) DeleteField() any {
 	return c.mig.deleteField()
 }
 
-// RefField is a shortcut to the controlled database RefField
-func (c *GoFig) RefField(docPath string) any {
+// RefField is a shortcut to the controlled database RefField.
+func (c *Fig) RefField(docPath string) any {
 	return c.mig.refField(docPath)
 }

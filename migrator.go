@@ -31,14 +31,23 @@ type Migration struct {
 
 // FigMigrator described what a GoFig Migrator implementeation should do.
 type FigMigrator interface {
+	// SetDeleteFlag updates the string representation of the field deletion flag.
 	SetDeleteFlag(flag string)
+	// PrepMigration attempts to solve for each of the staged changes.
 	PrepMigration() error
+	// PresentMigration displays the staged changes to the user via stdout.
 	PresentMigration()
+	// RunMigration executes all of the staged changes against the database.
 	RunMigration()
+	// LoadMigration attempts to load a migration by name from storage.
 	LoadMigration() error
+	// StoreMigration attempts to save a staged migration to storage by name.
 	StoreMigration() error
+	// deleteField returns the database field deletion value.
 	deleteField() any
+	// refField returns a database document reference value.
 	refField(docPath string) any
+	// Stage returns a Stager object which is used for staging changes.
 	Stage() FigStager
 }
 
@@ -53,7 +62,7 @@ type Migrator struct {
 }
 
 // NewMigrator is a Migrator factory.
-func NewMigrator(storagePath string, database figFirestore, name string) FigMigrator {
+func NewMigrator(storagePath string, database figFirestore, name string) *Migrator {
 	m := Migrator{
 		name:        name,
 		storagePath: storagePath,
@@ -285,11 +294,17 @@ func (m *Migrator) refField(docPath string) any {
 	return m.database.refField(docPath)
 }
 
+// FigStager represents the staging API.
 type FigStager interface {
+	// Update stages a new Update change on the Migrator.
 	Update(docPath string, data map[string]any) error
+	// Set stages a new Set change on the Migrator.
 	Set(docPath string, data map[string]any) error
+	// Add stages a new Add change on the Migrator.
 	Add(colPath string, data map[string]any) error
+	// Delete stages a new Delete change on the Migrator.
 	Delete(docPath string) error
+	// Unknown stages a new change on the Migrator of an Unknown command type.
 	Unknown(docPath string, data map[string]any) error
 }
 
@@ -327,7 +342,7 @@ func (s Stager) Add(colPath string, data map[string]any) error {
 	if err != nil {
 		return err
 	}
-	change := NewChange(path, map[string]any{}, data, MigratorSet, s.migrator.database)
+	change := NewChange(path, map[string]any{}, data, MigratorAdd, s.migrator.database)
 	s.migrator.changes = append(s.migrator.changes, change)
 	return nil
 }
