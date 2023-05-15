@@ -14,13 +14,21 @@ import (
 
 // figFirestore is an interface that expresses what a NoSQL database dependency should do.
 type figFirestore interface {
+	// getDocData attempts to read the document and return the underlying data.
 	getDocData(docPath string) (map[string]any, error)
+	// genDocPath is used to generate new unique document path given a collection path.
 	genDocPath(colPath string) (string, error)
+	// updateDoc pushes the data to the document at the given docPath. The changes are merged.
 	updateDoc(docPath string, data map[string]any) error
+	// setDoc pushes the data to the document at the given docPath. The document is overwritten.
 	setDoc(docPath string, data map[string]any) error
+	// deleteDoc removed the given document from the database.
 	deleteDoc(docPath string) error
+	// deleteField returns a value that if set on a key marks it for deletion.
 	deleteField() any
+	// refField transforms the document path into a database document reference object.
 	refField(docPath string) any
+	// name returns a hash representing the unique firestore database name.
 	name() string
 }
 
