@@ -101,14 +101,14 @@ func serializeData(data any, f figFirestore) any {
 	switch k := v.Kind(); k {
 	case reflect.Map:
 		newData := map[string]any{}
-		for k, v := range data.(map[string]any) {
+		for k, v := range toMapAny(data) {
 			newData[k] = serializeData(v, f)
 		}
 		return newData
 
 	case reflect.Slice:
 		newData := []any{}
-		for _, d := range data.([]any) {
+		for _, d := range toSliceAny(data) {
 			newData = append(newData, serializeData(d, f))
 		}
 		return newData
@@ -138,14 +138,14 @@ func deSerializeData(data any, f figFirestore) any {
 
 	case reflect.Map:
 		newData := map[string]any{}
-		for k, v := range data.(map[string]any) {
+		for k, v := range toMapAny(data) {
 			newData[k] = deSerializeData(v, f)
 		}
 		return newData
 
 	case reflect.Slice:
 		newData := []any{}
-		for _, d := range data.([]any) {
+		for _, d := range toSliceAny(data) {
 			newData = append(newData, deSerializeData(d, f))
 		}
 		return newData
@@ -260,4 +260,40 @@ func longestLine(s string) (int, string) {
 		}
 	}
 	return maxLen, subString
+}
+
+func toMapAny(data any) map[string]any {
+
+	newMap := map[string]any{}
+	rtype := reflect.TypeOf(data)
+
+	if rtype.Kind() == reflect.Map {
+		val := reflect.ValueOf(data)
+
+		for _, e := range val.MapKeys(){
+			if k, ok := e.Interface().(string); ok {
+				newMap[k] = val.MapIndex(e).Interface()
+			}
+
+		}
+	}
+
+	return newMap
+}
+
+func toSliceAny(data any) []any {
+
+	newSlice := []any{}
+	rtype := reflect.TypeOf(data)
+
+	if rtype.Kind() == reflect.Slice {
+		val := reflect.ValueOf(data)
+
+        for i := 0; i < val.Len(); i++ {
+            newSlice = append(newSlice, val.Index(i).Interface())
+        }
+
+	}
+
+	return newSlice
 }

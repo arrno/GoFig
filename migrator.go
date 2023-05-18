@@ -144,10 +144,10 @@ func (m *Migrator) SetDeleteFlag(flag string) {
 	m.deleteFlag = flag
 }
 
-type TransformMode int
+type transformMode int
 
 const (
-	Serialize TransformMode = iota
+	Serialize transformMode = iota
 	DeSerialize
 	Exclude
 )

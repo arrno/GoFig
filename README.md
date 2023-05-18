@@ -97,3 +97,5 @@ data := map[string]any{
 
 ## To Do
 - Allow for specific type declarations in nested lists/maps as opposed to only `[]any` and `map[string]any`
+- Option to save diff
+- Abbreviate large diffs in strategic ways

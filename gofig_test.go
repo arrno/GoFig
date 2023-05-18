@@ -42,7 +42,7 @@ var mf MockFirestore = MockFirestore{}
 var before = map[string]any{
 	"a": "foo",
 	"b": "bar",
-	"c": []any{1, 2, 3, 4},
+	"c": []int{1, 2, 3, 4},
 	"d": false,
 	"e": map[string]any{
 		"f": "foo",
@@ -51,7 +51,7 @@ var before = map[string]any{
 }
 var patch = map[string]any{
 	"a": "far",
-	"c": []any{1, 2, 6},
+	"c": []int{1, 2, 6},
 	"d": true,
 	"e": map[string]any{
 		"f": false,
@@ -61,11 +61,22 @@ var patch = map[string]any{
 var after = map[string]any{
 	"a": "far",
 	"b": "bar",
-	"c": []any{1, 2, 6},
+	"c": []int{1, 2, 6},
 	"d": true,
 	"e": map[string]any{
 		"f": false,
 		"g": 7.8,
+	},
+	"h": 1000,
+}
+
+var stat = map[string]any{
+	"a": "far",
+	"b": "bar",
+	"c": []int{1, 2, 6},
+	"d": true,
+	"e": map[string]bool{
+		"f": false,
 	},
 	"h": 1000,
 }
@@ -102,21 +113,21 @@ func TestChanges(t *testing.T) {
 			patch:    patch,
 			command:  MigratorUpdate,
 			after:    after,
-			rollback: map[string]any{"a": "foo", "c": []any{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo"}, "h": nil},
+			rollback: map[string]any{"a": "foo", "c": []int{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo"}, "h": nil},
 		},
 		"before_patch_delete": {
 			before:   before,
 			command:  MigratorDelete,
 			patch:    patch,
 			after:    map[string]any{},
-			rollback: map[string]any{"a": "foo", "b": "bar", "c": []any{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo", "g": 7.8}},
+			rollback: map[string]any{"a": "foo", "b": "bar", "c": []int{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo", "g": 7.8}},
 		},
 		"before_patch_set": {
 			before:   before,
 			command:  MigratorSet,
 			patch:    patch,
 			after:    patch,
-			rollback: map[string]any{"a": "foo", "b": "bar", "c": []any{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo", "g": 7.8}, "h": nil},
+			rollback: map[string]any{"a": "foo", "b": "bar", "c": []int{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo", "g": 7.8}, "h": nil},
 		},
 	}
 
@@ -136,6 +147,10 @@ func TestChanges(t *testing.T) {
 		if string(cafter) != string(vafter) {
 			t.Fatalf("Mismatched after on %s", k)
 		}
+
+		// if !reflect.DeepEqual(c.after, v.after) {
+		// 	t.Fatalf("Mismatched type after on %s", k)
+		// }
 
 		if !reflect.DeepEqual(c.patch, v.patch) {
 			t.Fatalf("Mismatched patch on %s", k)
