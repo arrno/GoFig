@@ -279,16 +279,16 @@ func (m *Migrator) StoreMigration() error {
 
 func (m *Migrator) Store(target any) error {
 	if strings.HasPrefix(m.storagePath, "[firestore]/") {
-		// TODO
-		return nil
+		suffix := strings.Replace(m.storagePath, "[firestore]/", "", 1)
+		return m.database.setDocStruct(target, suffix)
 	}
 	return storeJson(target, m.storagePath, m.name)
 }
 
 func (m *Migrator) Load(path string, target *any) error {
 	if strings.HasPrefix(m.storagePath, "[firestore]/") {
-		// TODO
-		return nil
+		suffix := strings.Replace(m.storagePath, "[firestore]/", "", 1)
+		return m.database.getDocStruct(target, suffix)
 	}
 	return loadJson(path, target)
 }

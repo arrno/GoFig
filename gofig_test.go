@@ -34,6 +34,12 @@ func (f MockFirestore) refField(docPath string) any {
 func (f MockFirestore) name() string {
 	return ""
 }
+func (f MockFirestore) getDocStruct(target any, docPath string) error {
+	return nil
+}
+func (f MockFirestore) setDocStruct(target any, docPath string) error {
+	return nil
+}
 
 var mf MockFirestore = MockFirestore{}
 

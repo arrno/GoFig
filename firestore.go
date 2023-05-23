@@ -23,6 +23,8 @@ type figFirestore interface {
 	deleteField() any
 	refField(docPath string) any
 	name() string
+	getDocStruct(target any, docPath string) error
+	setDocStruct(target any, docPath string) error
 }
 
 // fireFriend is the gofig implementation/wrapper for google's firestore client.
@@ -108,6 +110,16 @@ func (f fireFriend) getDocData(docPath string) (map[string]any, error) {
 
 	}
 	return snap.Data(), nil
+}
+
+func (f fireFriend) setDocStruct(target any, docPath string) error {
+	ref, err := f.docRef(docPath)
+
+	if err == nil {
+		_, err = ref.Set(f.ctx, target)
+	}
+
+	return err
 }
 
 func (f fireFriend) getDocStruct(target any, docPath string) error {
