@@ -270,7 +270,7 @@ func toMapAny(data any) map[string]any {
 	if rtype.Kind() == reflect.Map {
 		val := reflect.ValueOf(data)
 
-		for _, e := range val.MapKeys(){
+		for _, e := range val.MapKeys() {
 			if k, ok := e.Interface().(string); ok {
 				newMap[k] = val.MapIndex(e).Interface()
 			}
@@ -289,9 +289,9 @@ func toSliceAny(data any) []any {
 	if rtype.Kind() == reflect.Slice {
 		val := reflect.ValueOf(data)
 
-        for i := 0; i < val.Len(); i++ {
-            newSlice = append(newSlice, val.Index(i).Interface())
-        }
+		for i := 0; i < val.Len(); i++ {
+			newSlice = append(newSlice, val.Index(i).Interface())
+		}
 
 	}
 

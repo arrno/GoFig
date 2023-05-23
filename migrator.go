@@ -3,6 +3,7 @@ package fig
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -13,41 +14,32 @@ import (
 // You cannot have multiple work units pointing to the same document in
 // a migration.
 type WorkUnit struct {
-	DocPath string         `json:"docPath"`
-	Patch   map[string]any `json:"patch,omitempty"`
-	Command Command        `json:"command,omitempty"`
+	DocPath string         `json:"docPath" firestore:"docpath,omitempty"`
+	Patch   map[string]any `json:"patch,omitempty" patch:"executed,omitempty"`
+	Command Command        `json:"command,omitempty" firestore:"command,omitempty"`
 }
 
 // Migration represents all the instructions needed by the migrator to orchestrate a job.
 // All migration jobs including rollbacks take this form.
 type Migration struct {
-	DatabaseName string     `json:"databaseName"`
-	Timestamp    time.Time  `json:"timestamp"`
-	ChangeUnits  []WorkUnit `json:"changeUnits"`
-	Executed     bool       `json:"executed"`
+	DatabaseName string     `json:"databaseName" firestore:"databaseName,omitempty"`
+	Timestamp    time.Time  `json:"timestamp" firestore:"timestamp,omitempty"`
+	ChangeUnits  []WorkUnit `json:"changeUnits" firestore:"changeUnits,omitempty"`
+	Executed     bool       `json:"executed" firestore:"executed,omitempty"`
 }
 
 // <---------------------- Migrator ------------------------------------>
 
 // FigMigrator described what a GoFig Migrator implementeation should do.
 type FigMigrator interface {
-	// SetDeleteFlag updates the string representation of the field deletion flag.
 	SetDeleteFlag(flag string)
-	// PrepMigration attempts to solve for each of the staged changes.
 	PrepMigration() error
-	// PresentMigration displays the staged changes to the user via stdout.
 	PresentMigration()
-	// RunMigration executes all of the staged changes against the database.
 	RunMigration()
-	// LoadMigration attempts to load a migration by name from storage.
 	LoadMigration() error
-	// StoreMigration attempts to save a staged migration to storage by name.
 	StoreMigration() error
-	// deleteField returns the database field deletion value.
 	deleteField() any
-	// refField returns a database document reference value.
 	refField(docPath string) any
-	// Stage returns a Stager object which is used for staging changes.
 	Stage() FigStager
 }
 
@@ -167,37 +159,41 @@ func (m *Migrator) PrepMigration() error {
 
 // PresentMigration prints all the staged changes to stdout for review.
 func (m *Migrator) PresentMigration() {
-
+	diffText := ""
 	lngth := maxNum(len(m.name), len(m.database.name()))
 	lngth = maxNum(lngth, len(m.storagePath)) + 26
-	m.printSeparator(lngth)
+	diffText += m.printSeparator(lngth)
 
-	fmt.Printf(
+	h := fmt.Sprintf(
 		"Migration Name:	%s\nDatabase:	%s\nStorage Path:	%s\nHas Run:	%v\n",
 		"  "+m.name,
 		"  "+m.database.name(),
 		"  "+m.storagePath,
 		"  "+strconv.FormatBool(m.hasRun),
 	)
+	print(h)
+	diffText += h
 	for _, c := range m.changes {
 		lngth = len(c.docPath) + len(c.commandString()) + 19
 		header, cOut := c.Present()
 		lineLength, _ := longestLine(cOut)
 		maxLength := maxNum(lngth, lineLength-12)
-		m.printSeparator(maxLength)
+		diffText += m.printSeparator(maxLength)
 		headerPad := strings.Repeat(" ", maxLength-utf8.RuneCountInString(header[0]+header[1])+14)
-		fmt.Print(strings.Join(header, headerPad))
-		fmt.Print(cOut)
+		b := strings.Join(header, headerPad) + cOut
+		print(b)
+		diffText += b
 	}
-	m.printSeparator(lngth)
+	diffText += m.printSeparator(lngth)
+	os.WriteFile(fmt.Sprintf("%s_diff.txt", m.name), []byte(diffText), 0644)
 }
 
 // printSeparator prints a horizontal separator to stdout
-func (m *Migrator) printSeparator(length int) {
+func (m *Migrator) printSeparator(length int) string {
 	dashes := strings.Repeat("-", length)
-	// 50
-	fmt.Printf("\n<%s>\n", dashes)
-	fmt.Printf("<%s>\n\n", dashes)
+	sep := fmt.Sprintf("\n<%s>\n<%s>\n\n", dashes, dashes)
+	fmt.Printf(sep)
+	return sep
 }
 
 // RunMigration executes all of the staged changes against the database.
@@ -281,6 +277,22 @@ func (m *Migrator) StoreMigration() error {
 
 }
 
+func (m *Migrator) Store(target any) error {
+	if strings.HasPrefix(m.storagePath, "[firestore]/") {
+		// TODO
+		return nil
+	}
+	return storeJson(target, m.storagePath, m.name)
+}
+
+func (m *Migrator) Load(path string, target *any) error {
+	if strings.HasPrefix(m.storagePath, "[firestore]/") {
+		// TODO
+		return nil
+	}
+	return loadJson(path, target)
+}
+
 // deleteField returns the firestore Delete value which can be set on a nested
 // data field within a Set/Update operation. The field will be removed when
 // updateDoc or setDoc is called.
@@ -296,15 +308,10 @@ func (m *Migrator) refField(docPath string) any {
 
 // FigStager represents the staging API.
 type FigStager interface {
-	// Update stages a new Update change on the Migrator.
 	Update(docPath string, data map[string]any) error
-	// Set stages a new Set change on the Migrator.
 	Set(docPath string, data map[string]any) error
-	// Add stages a new Add change on the Migrator.
 	Add(colPath string, data map[string]any) error
-	// Delete stages a new Delete change on the Migrator.
 	Delete(docPath string) error
-	// Unknown stages a new change on the Migrator of an Unknown command type.
 	Unknown(docPath string, data map[string]any) error
 }
 

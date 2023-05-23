@@ -9,7 +9,7 @@ GoFig is a tool for managing Firestore database migrations. This project aims to
 go get github.com/aaronhough/GoFig
 ```
 ## Initialize Migrator
-The migrator is initialized with a few configuration parameters.
+The migrator is initialized with a few configuration parameters. If your storage path starts with `[firestore]/`, migrations will be stored on your database.
 ```go
 import fig "github.com/aaronhough/GoFig"
 

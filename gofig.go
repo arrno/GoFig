@@ -8,19 +8,12 @@ import (
 
 // GoFig represents the main Fig API.
 type GoFig interface {
-	// Close should be deferred on initialization to handle any database session cleanup.
 	Close()
-	// Stage exposes the Migrator Stager as an API to the end user.
 	Stage() FigStager
-	// LoadFromFile attempts to load a pre staged migration from a file if it exists.
 	LoadFromFile() error
-	// SaveToFile attempts to save a migration staged in runtime to storage.
 	SaveToFile() error
-	// ManageStagedMigration launches the interactive CLI script.
 	ManageStagedMigration()
-	// DeleteField is a shortcut to the controlled database DeleteField.
 	DeleteField() any
-	// RefField is a shortcut to the controlled database RefField.
 	RefField(docPath string) any
 }
 
