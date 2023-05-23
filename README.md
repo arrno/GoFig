@@ -34,14 +34,14 @@ Stage each change into the migrator using the `Stage` utility.
 data := map[string]any{
     "foo": "bar",
     "fiz": false,
-    "buz": map[string]any{
-        "a": []any{ 2, 2, 3 },
+    "buz": map[string][]int{
+        "a": { 2, 2, 3 },
     },
 }
 
 // Stage options are Add, Update, Set, and Delete.
 fg.Stage().Add("fig/fog", data)
-fg.Stage().Update("foo/bar", map[string]any{ "hello": "world" })
+fg.Stage().Update("foo/bar", map[string]string{ "hello": "world" })
 ```
 
 ## Save a Migration To Storage
