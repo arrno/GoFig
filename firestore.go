@@ -112,6 +112,7 @@ func (f fireFriend) getDocData(docPath string) (map[string]any, error) {
 	return snap.Data(), nil
 }
 
+// setDocStruct writes the target data to the docPath location.
 func (f fireFriend) setDocStruct(target any, docPath string) error {
 	ref, err := f.docRef(docPath)
 
@@ -122,6 +123,7 @@ func (f fireFriend) setDocStruct(target any, docPath string) error {
 	return err
 }
 
+// getDocStruct wants a pointer to a struct and a docPath. The data is read from the docPath and loaded into the struct.
 func (f fireFriend) getDocStruct(target any, docPath string) error {
 
 	v := reflect.TypeOf(target)
@@ -132,14 +134,14 @@ func (f fireFriend) getDocStruct(target any, docPath string) error {
 		return errors.New("Must pass pointer to struct")
 	}
 	snap, err := f.doc(docPath)
+	if err != nil {
+		return err
+	}
+
 	if !snap.Exists() {
 		return errors.New("Snap does not exist")
 	}
 
-	if err != nil {
-		return err
-
-	}
 	return snap.DataTo(target)
 }
 

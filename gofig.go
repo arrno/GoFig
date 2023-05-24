@@ -10,8 +10,8 @@ import (
 type GoFig interface {
 	Close()
 	Stage() FigStager
-	LoadFromFile() error
-	SaveToFile() error
+	LoadFromStorage() error
+	SaveToStorage() error
 	ManageStagedMigration()
 	DeleteField() any
 	RefField(docPath string) any
@@ -56,18 +56,21 @@ func (c *Fig) Stage() FigStager {
 	return c.mig.Stage()
 }
 
-// LoadFromFile attempts to load a pre staged migration from a file if it exists
+// LoadFromStorage attempts to load a pre staged migration from a file if it exists
 // in the storagePath folder
-func (c *Fig) LoadFromFile() error {
+func (c *Fig) LoadFromStorage() error {
 	if err := c.mig.LoadMigration(); err != nil {
 		return errors.New("LoadError: " + err.Error())
 	}
 	return nil
 }
 
-// SaveToFile attempts to save a migration staged in runtime memory to
+// SaveToStorage attempts to save a migration staged in runtime memory to
 // a file in the storagePath folder
-func (c *Fig) SaveToFile() error {
+func (c *Fig) SaveToStorage() error {
+	if err := c.mig.PrepMigration(); err != nil {
+		return err
+	}
 	if err := c.mig.StoreMigration(); err != nil {
 		return errors.New("StoreError: " + err.Error())
 	}

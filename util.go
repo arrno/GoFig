@@ -93,7 +93,7 @@ func applyDiffPatch(original []byte, patch []byte) ([]byte, error) {
 func serializeData(data any, f figFirestore) any {
 
 	if reflect.DeepEqual(data, f.deleteField()) {
-		return "__delete__<delete>__delete__"
+		return "<delete>!delete<delete>"
 	}
 
 	v := reflect.ValueOf(data)
@@ -116,14 +116,14 @@ func serializeData(data any, f figFirestore) any {
 	default:
 		_, ok := data.(time.Time)
 		if ok {
-			return "__timestamp__" + data.(time.Time).Format("2006-01-02T15:04:05.000Z") + "__timestamp__"
+			return "<time>" + data.(time.Time).Format("2006-01-02T15:04:05.000Z") + "<time>"
 		}
 
 		_, ok = data.(*firestore.DocumentRef)
 		if ok && data.(*firestore.DocumentRef) != nil {
 			path := data.(*firestore.DocumentRef).Path
 			path = strings.Split(path, "/(default)/documents/")[1]
-			return "__docref__" + path + "__docref__"
+			return "<ref>" + path + "<ref>"
 		}
 
 	}
@@ -151,16 +151,16 @@ func deSerializeData(data any, f figFirestore) any {
 		return newData
 
 	case reflect.String:
-		if strings.HasPrefix(data.(string), "__timestamp__") {
-			time, _ := time.Parse("2006-01-02T15:04:05.000Z", strings.Replace(data.(string), "__timestamp__", "", -1))
+		if strings.HasPrefix(data.(string), "<time>") {
+			time, _ := time.Parse("2006-01-02T15:04:05.000Z", strings.Replace(data.(string), "<time>", "", -1))
 			return time
 
-		} else if strings.HasPrefix(data.(string), "__docref__") {
-			path := strings.Replace(data.(string), "__docref__", "", -1)
+		} else if strings.HasPrefix(data.(string), "<ref>") {
+			path := strings.Replace(data.(string), "<ref>", "", -1)
 			ref := f.refField(path)
 			return ref
 
-		} else if strings.HasPrefix(data.(string), "__delete__") {
+		} else if strings.HasPrefix(data.(string), "<delete>") {
 			return f.deleteField()
 
 		}
@@ -190,6 +190,15 @@ func loadJson[T any](fullPath string, target *T) error {
 		return err
 	}
 	return nil
+}
+
+// LoadFig wraps loadJson. It first attempts to load the content from the database but fails back to local storage.
+func loadFig[T any](db figFirestore, path string, target *T) error {
+	if strings.HasPrefix(path, "[firestore]/") {
+		suffix := strings.Replace(path, "[firestore]/", "", 1)
+		return db.getDocStruct(target, suffix)
+	}
+	return loadJson(path, target)
 }
 
 // Transform returns new data where instances of before are replaced with after. If after is nil, key is dropped.

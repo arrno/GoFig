@@ -3,7 +3,6 @@ package fig
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +25,11 @@ type Migration struct {
 	Timestamp    time.Time  `json:"timestamp" firestore:"timestamp,omitempty"`
 	ChangeUnits  []WorkUnit `json:"changeUnits" firestore:"changeUnits,omitempty"`
 	Executed     bool       `json:"executed" firestore:"executed,omitempty"`
+}
+
+// Diff represents how we want to store our diffs
+type Diff struct {
+	Diff string `json:"diff" firestore:"diff,omitempty"`
 }
 
 // <---------------------- Migrator ------------------------------------>
@@ -58,7 +62,7 @@ func NewMigrator(storagePath string, database figFirestore, name string) *Migrat
 	m := Migrator{
 		name:        name,
 		storagePath: storagePath,
-		deleteFlag:  "<delete>",
+		deleteFlag:  "!delete",
 		database:    database,
 	}
 	return &m
@@ -113,7 +117,7 @@ func (m *Migrator) storeRollback() error {
 	if err != nil {
 		return err
 	}
-	return storeJson(rollback, m.storagePath, m.name+"_rollback")
+	return m.Store(rollback, "_rollback")
 }
 
 // validateWorkset returns a new error if the staged Changes are not valid
@@ -185,7 +189,13 @@ func (m *Migrator) PresentMigration() {
 		diffText += b
 	}
 	diffText += m.printSeparator(lngth)
-	os.WriteFile(fmt.Sprintf("%s_diff.txt", m.name), []byte(diffText), 0644)
+	// os.WriteFile(fmt.Sprintf("%s_diff.txt", m.name), []byte(diffText), 0644)
+	m.Store(
+		Diff{
+			Diff: diffText,
+		},
+		"diff",
+	)
 }
 
 // printSeparator prints a horizontal separator to stdout
@@ -222,7 +232,7 @@ func (m *Migrator) RunMigration() {
 // This is the preferred workflow for loading a rollback.
 func (m *Migrator) LoadMigration() error {
 	var mig Migration
-	err := loadJson(m.storagePath+"/"+m.name, &mig)
+	err := loadFig(m.database, m.storagePath+"/"+m.name, &mig)
 	if err != nil {
 		return err
 	}
@@ -273,24 +283,16 @@ func (m *Migrator) StoreMigration() error {
 		migration.ChangeUnits = append(migration.ChangeUnits, u)
 	}
 
-	return storeJson(migration, m.storagePath, m.name)
+	return m.Store(migration, "")
 
 }
 
-func (m *Migrator) Store(target any) error {
+func (m *Migrator) Store(target any, tag string) error {
 	if strings.HasPrefix(m.storagePath, "[firestore]/") {
 		suffix := strings.Replace(m.storagePath, "[firestore]/", "", 1)
-		return m.database.setDocStruct(target, suffix)
+		return m.database.setDocStruct(target, fmt.Sprintf("%s/%s", suffix, m.name+tag))
 	}
-	return storeJson(target, m.storagePath, m.name)
-}
-
-func (m *Migrator) Load(path string, target *any) error {
-	if strings.HasPrefix(m.storagePath, "[firestore]/") {
-		suffix := strings.Replace(m.storagePath, "[firestore]/", "", 1)
-		return m.database.getDocStruct(target, suffix)
-	}
-	return loadJson(path, target)
+	return storeJson(target, m.storagePath, m.name+tag)
 }
 
 // deleteField returns the firestore Delete value which can be set on a nested

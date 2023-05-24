@@ -221,7 +221,7 @@ func (c *Change) Present() ([]string, string) {
 		out += fmt.Sprintf("< no changes >\n")
 
 	} else {
-		replace := []string{"__timestamp__", "__delete__", "__docref__"}
+		replace := []string{"<time>", "<delete>", "<ref>"}
 		s := c.prettyDiff
 
 		for _, r := range replace {
