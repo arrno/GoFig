@@ -9,7 +9,7 @@ GoFig is a tool for managing Firestore database migrations. This project aims to
 go get github.com/aaronhough/GoFig
 ```
 ## Initialize Migrator
-The migrator is initialized with a few configuration parameters. If your storage path starts with `[firestore]/`, migrations will be stored on your database (suffix path must be a collection). The 'Name' value will be the file/doc name so it should only contain alphanumeric digits and underscores/dashes `A-Z,a-z,0-9,_,-`.
+The migrator is initialized with a few configuration parameters. If your storage path starts with `[firestore]/`, migrations will be stored on your database (suffix path must be a collection). The `Name` value will be the file/doc name so it should only contain alphanumeric digits and underscores/dashes `A-Z,a-z,0-9,_,-`.
 ```go
 import fig "github.com/aaronhough/GoFig"
 
@@ -54,8 +54,7 @@ fg.StoreMigration()
 ## Load an Existing Migration
 The migrator will search for an existing migration file/doc in the `StoragePath` folder that matches the configured `Name`.
 ```go
-// If a file matching the migration `Name` exists,
-// it will be loaded.
+// If a file matching the migration `Name` exists, it will be loaded.
 fg.LoadFromStorage()
 ```
 ## Run a Migration
