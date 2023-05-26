@@ -119,7 +119,7 @@ func TestChanges(t *testing.T) {
 			patch:    patch,
 			command:  MigratorUpdate,
 			after:    after,
-			rollback: map[string]any{"a": "foo", "c": []int{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo"}, "h": nil},
+			rollback: before,
 		},
 		"before_patch_delete": {
 			before:   before,
@@ -133,7 +133,7 @@ func TestChanges(t *testing.T) {
 			command:  MigratorSet,
 			patch:    patch,
 			after:    patch,
-			rollback: map[string]any{"a": "foo", "b": "bar", "c": []int{1, 2, 3, 4}, "d": false, "e": map[string]any{"f": "foo", "g": 7.8}, "h": nil},
+			rollback: before,
 		},
 	}
 
@@ -151,6 +151,8 @@ func TestChanges(t *testing.T) {
 		vafter, _ := json.Marshal(v.after)
 
 		if string(cafter) != string(vafter) {
+			t.Log(string(vafter))
+			t.Log(string(cafter))
 			t.Fatalf("Mismatched after on %s", k)
 		}
 
