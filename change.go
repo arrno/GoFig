@@ -173,6 +173,12 @@ func (c *Change) inferRollback() error {
 	if c.before == nil || c.after == nil {
 		return errors.New("Need before and after value to infer rollback.")
 	}
+	// due to issues rolling back added fields caused by ambiguity of serialized null
+	// to rollback an update/set, we just do a set to before or a delete
+	if c.command == MigratorSet || c.command == MigratorUpdate {
+		c.rollback = c.before
+		return nil
+	}
 	sBefore, sAfter := c.beforeAfterCache()
 	a, err := json.Marshal(sAfter)
 	if err != nil {

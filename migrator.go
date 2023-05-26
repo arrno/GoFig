@@ -3,6 +3,7 @@ package fig
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -59,8 +60,9 @@ type Migrator struct {
 
 // NewMigrator is a Migrator factory.
 func NewMigrator(storagePath string, database figFirestore, name string) *Migrator {
+	// /^[a-zA-Z0-9-_]+$/;
 	m := Migrator{
-		name:        name,
+		name:        regexp.MustCompile(`[^a-zA-Z0-9-_]+`).ReplaceAllString(name, ""),
 		storagePath: storagePath,
 		deleteFlag:  "!delete",
 		database:    database,
@@ -86,7 +88,7 @@ func (m *Migrator) buildRollback() (*Migration, error) {
 			command = MigratorDelete
 			break
 		case MigratorUpdate:
-			command = MigratorUpdate
+			command = MigratorSet
 			break
 		case MigratorDelete:
 			command = MigratorAdd
@@ -95,7 +97,7 @@ func (m *Migrator) buildRollback() (*Migration, error) {
 			if len(c.before) == 0 {
 				command = MigratorDelete
 			} else {
-				command = MigratorUpdate
+				command = MigratorSet
 			}
 			break
 		default:
@@ -175,7 +177,7 @@ func (m *Migrator) PresentMigration() {
 		"  "+m.storagePath,
 		"  "+strconv.FormatBool(m.hasRun),
 	)
-	print(h)
+	fmt.Print(h)
 	diffText += h
 	for _, c := range m.changes {
 		lngth = len(c.docPath) + len(c.commandString()) + 19
@@ -185,17 +187,18 @@ func (m *Migrator) PresentMigration() {
 		diffText += m.printSeparator(maxLength)
 		headerPad := strings.Repeat(" ", maxLength-utf8.RuneCountInString(header[0]+header[1])+14)
 		b := strings.Join(header, headerPad) + cOut
-		print(b)
+		fmt.Print(b)
 		diffText += b
 	}
 	diffText += m.printSeparator(lngth)
+
 	// os.WriteFile(fmt.Sprintf("%s_diff.txt", m.name), []byte(diffText), 0644)
-	m.Store(
-		Diff{
-			Diff: diffText,
-		},
-		"diff",
-	)
+	// m.Store(
+	// 	Diff{
+	// 		Diff: diffText,
+	// 	},
+	// 	"diff",
+	// )
 }
 
 // printSeparator prints a horizontal separator to stdout
