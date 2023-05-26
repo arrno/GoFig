@@ -6,6 +6,9 @@ GoFig is a tool for managing Firestore database migrations. This project aims to
 1. The end user will have visibility into all pending migration changes and effects in relation to the active state of their database. The user can then decide to push or cancel the migration.
 2. When a migration is pushed to the database, all the changes presented to the end user are implemented and no other changes/effects are implemented by the migrator.
 3. All changes made by the migrator in a migration job can be completely reversed by staging and pushing the generated `_rollback` migration file.
+
+![Screen Shot 2023-05-25 at 9 51 08 PM](https://github.com/arrno/GoFig/assets/63863422/64e0ad5c-49fd-4812-af1f-28d5d6ef808f)
+
 ## Install
 ```
 go get github.com/aaronhough/GoFig
