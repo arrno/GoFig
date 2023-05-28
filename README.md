@@ -103,3 +103,4 @@ The actual migration file simply needs to host an array of serialized changeUnit
 
 ## To Do
 - Abbreviate large diffs in terminal
+- Convert set/update rollback instructions from 'set to before' to 'patch difference' to improve storage usage

@@ -2,11 +2,13 @@ package fig
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -28,7 +30,6 @@ var clrthm colorTheme
 
 // clrTheme is a function to build and return clrthm of type colorTheme which is a singleton.
 func clrTheme() *colorTheme {
-
 	if clrthm.green == nil {
 		green := color.New(color.Bold, color.FgGreen).SprintFunc()
 		yellow := color.New(color.Bold, color.FgYellow).SprintFunc()
@@ -50,7 +51,6 @@ func clrTheme() *colorTheme {
 
 // PrettyDiff returns the pretty formatted difference between a before and after map.
 func prettyDiff(b map[string]any, a map[string]any) (string, error) {
-
 	bm, err := json.Marshal(b)
 	if err != nil {
 		return "", err
@@ -91,7 +91,6 @@ func applyDiffPatch(original []byte, patch []byte) ([]byte, error) {
 
 // SerializeData converts timestamps, docrefs, and other complex objects into marked strings.
 func serializeData(data any, f figFirestore) any {
-
 	if reflect.DeepEqual(data, f.deleteField()) {
 		return "<delete>!delete<delete>"
 	}
@@ -133,7 +132,6 @@ func serializeData(data any, f figFirestore) any {
 
 // DeSerializeData converts marked strings into timestamps, docrefs, and other complex objects.
 func deSerializeData(data any, f figFirestore) any {
-
 	switch k := reflect.ValueOf(data).Kind(); k {
 
 	case reflect.Map:
@@ -271,8 +269,8 @@ func longestLine(s string) (int, string) {
 	return maxLen, subString
 }
 
+// toMapAny converts any data into map[string]any.
 func toMapAny(data any) map[string]any {
-
 	newMap := map[string]any{}
 	rtype := reflect.TypeOf(data)
 
@@ -283,15 +281,13 @@ func toMapAny(data any) map[string]any {
 			if k, ok := e.Interface().(string); ok {
 				newMap[k] = val.MapIndex(e).Interface()
 			}
-
 		}
 	}
-
 	return newMap
 }
 
+// toSliceAny converts any data into []any.
 func toSliceAny(data any) []any {
-
 	newSlice := []any{}
 	rtype := reflect.TypeOf(data)
 
@@ -301,8 +297,102 @@ func toSliceAny(data any) []any {
 		for i := 0; i < val.Len(); i++ {
 			newSlice = append(newSlice, val.Index(i).Interface())
 		}
-
 	}
-
 	return newSlice
+}
+
+// getNullMapPaths finds paths in nested data that end with a nil value.
+func getNullMapPaths(data map[string]any, path []string, results *[][]string) {
+	for k, v := range data {
+		if v == nil {
+			nullPath := append(path, k)
+			npCopy := make([]string, len(nullPath))
+			copy(npCopy, nullPath)
+			*results = append(*results, npCopy)
+			continue
+		}
+		val := reflect.ValueOf(v)
+		if val.Type().Kind() == reflect.Map {
+			nullPath := append(path, k)
+			getNullMapPaths(toMapAny(v), nullPath, results)
+		}
+		if val.Type().Kind() == reflect.Slice {
+			nullPath := append(path, k)
+			getNullSlicePaths(toSliceAny(v), nullPath, results)
+		}
+	}
+}
+
+// getNullSlicePaths finds paths in nested data that end with a nil value.
+func getNullSlicePaths(data []any, path []string, results *[][]string) {
+	for i := range data {
+		if data[i] == nil {
+			nullPath := append(path, fmt.Sprintf("%d",i))
+			npCopy := make([]string, len(nullPath))
+			copy(npCopy, nullPath)
+			*results = append(*results, npCopy)
+			continue
+		}
+		kind := reflect.TypeOf(data[i]).Kind()
+		if kind == reflect.Map {
+			nullPath := append(path, fmt.Sprintf("%d",i))
+			getNullMapPaths(toMapAny(data[i]), nullPath, results)
+		}
+		if kind == reflect.Slice {
+			nullPath := append(path, fmt.Sprintf("%d",i))
+			getNullSlicePaths(toSliceAny(data[i]), nullPath, results)
+		}
+	}
+}
+
+// replaceMapValues traverses a deep map and replaces the end value with a new value.
+func replaceMapValues(data *map[string]any, path []string, newValue any) {
+	level := data
+	for i, key := range path {
+		if i == len(path) - 1 {
+			(*level)[key] = newValue
+		} else {
+			nextLevel := (*level)[key]
+			val := reflect.ValueOf(nextLevel)
+			if val.Type().Kind() == reflect.Slice {
+				sl := toSliceAny(nextLevel)
+				(*level)[key] = sl
+				replaceSliceValues(&sl, path[i+1:], newValue)
+				break
+			}
+			if val.Type().Kind() == reflect.Map {
+				nl := toMapAny(nextLevel)
+				(*level)[key] = nl
+				level = &nl
+			}
+		}
+	}
+}
+
+// replaceSliceValues traverses a deep slice and replaces the end value with a new value.
+func replaceSliceValues(data *[]any, path []string, newValue any) {
+	level := data
+	for i, key := range path {
+		index, err := strconv.ParseInt(key, 0, 64)
+		if err != nil {
+			break
+		}
+		if i == len(path) - 1 {
+			(*level)[index] = newValue
+		} else {
+			nextLevel := (*level)[index]
+			val := reflect.ValueOf(nextLevel)
+			if val.Type().Kind() == reflect.Slice {
+				sl := toSliceAny(nextLevel)
+				(*level)[index] = sl
+				level = &sl
+			}
+			if val.Type().Kind() == reflect.Map {
+				nl := toMapAny(nextLevel)
+				(*level)[index] = nl
+				replaceMapValues(&nl, path[i+1:], newValue)
+				break
+			}
+		}
+	}
 }

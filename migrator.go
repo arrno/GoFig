@@ -274,6 +274,7 @@ func (m *Migrator) StoreMigration() error {
 		Timestamp:    time.Now(),
 		Executed:     m.hasRun,
 	}
+	
 	for _, c := range m.changes {
 		if c.errState != nil {
 			return errors.New("Detected error state on changes.")
